@@ -1,0 +1,287 @@
+/*
+ * Copyright 2024 Chair of EDA, Technical University of Munich
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *	 http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*********************************** Microaction Section ***********************************/
+Connector {Pc, Pc_p, Pc_np}
+Connector {Xa, Xb, Xd}
+
+Resource {PC_Gen, Decoder, ALU, Multi, Reg, DPort_W(dMemModel), DPort_R(dMemModel), IPort_R(iMemModel)}
+
+// General Microactions
+Microaction {
+    uA_IF (Pc -> IPort_R),
+    uA_PC_GEN (Pc -> PC_Gen -> Pc_p),
+    uA_ID (Decoder),
+    uA_OF_A (Xa),
+    uA_OF_B (Xb),
+    uA_ALU_branch (ALU -> Pc_np),
+    uA_ALU_mem (ALU),
+    uA_MEM_W (DPort_W)
+}
+
+// Non-forwarding Microactions
+Microaction {
+    uA_ALU_arith_nfw (ALU),
+    uA_MUL_nfw (Multi),
+    uA_MEM_R_nfw (DPort_R),
+    uA_WB_nfw (Reg -> Xd)
+}
+
+// Forwarding Microactions
+Microaction {
+    uA_ALU_arith_fw (ALU -> Xd),
+    uA_MUL_fw (Multi -> Xd),
+    uA_MEM_R_fw (DPort_R -> Xd),
+    uA_WB_fw (Reg)
+}
+
+// Virtual Microactions (to select between forwarding and non-forwarding)
+virtual Microaction {
+    vuA_ALU_arith,
+    vuA_MUL,
+    vuA_MEM_R,
+    vuA_WB
+}
+
+/*********************************** Stages & Pipeline ***********************************/
+Stage {
+    IF_stage (uA_IF, uA_PC_GEN),
+    ID_stage (uA_ID, uA_OF_A, uA_OF_B),
+    EX_stage (vuA_ALU_arith, vuA_MUL, uA_ALU_branch, uA_ALU_mem),
+    MEM_stage (vuA_MEM_R, uA_MEM_W),
+    WB_stage (vuA_WB)
+}
+Pipeline SimplePipeline (IF_stage -> ID_stage -> EX_stage -> MEM_stage -> WB_stage)
+
+/*********************************** External Models ***********************************/
+TraceValue {rs1, rs2, rd, pc, brTarget}
+
+ConnectorModel regModel (
+    link : "models/common/StandardRegisterModel.h"
+    trace : {rs1, rs2, rd}
+    connectorIn : Xd
+    connectorOut : {Xa, Xb}
+)
+
+ConnectorModel dynBranchPredModel (
+    link : "models/common/DynamicBranchPredictModel.h"
+    trace : {pc, brTarget}
+    connectorIn : {Pc_p, Pc_np}
+    connectorOut : Pc
+)
+
+ConnectorModel staBranchPredModel (
+    link : "models/common/StaticBranchPredictModel.h"
+    trace : {pc, brTarget}
+    connectorIn : {Pc_p, Pc_np}
+    connectorOut : Pc
+)
+
+ConnectorModel noBranchPredModel (
+    link : "models/common/NoBranchPredictModel.h"
+    connectorIn : {Pc_p, Pc_np}
+    connectorOut : Pc
+)
+
+ResourceModel iMemModel (
+    link : "models/common/DummyMemoryModel.h"
+)
+
+ResourceModel dMemModel (
+    link : "models/common/DummyMemoryModel.h"
+)
+
+/*********************************** Instruction Section ***********************************/
+InstrGroup {
+    Arith_Ra_Rb (add, sub, sll, xor, or, and, cadd),
+    Mul (mul, rem),
+    Arith_Ra (addi, sltiu, xori, ori, andi, caddi, cslli, caddi16sp),
+    Arith_Rb (cmv),
+    Arith_X (cli),
+    Store (sb, sh, sw, csw),
+    Load (lh, lw, lbu, lhu, clw),
+    Branch_Ra_Rb (beq, bne, blt, bge, bltu, bgeu),
+    Branch_Ra (cbeqz, cbnez),
+    Default ([?])
+}
+
+InstrGroup {
+    Arith_R_Type (add, sub, sll, xor, or, and, mul, rem),
+    Branch_B_Type (beq, bne, blt, bge, bltu, bgeu),
+    Load_I_Type (lb, lh, lw, lbu, lhu),
+    Arith_I_Type (addi, slti, sltiu, xori, ori, andi),
+    Store_S_Type (sb, sh, sw),
+    Branch_CB_Type (cbeqz, cbnez),
+    Arith_CR_Type (cadd),
+    Arith_CI_Type (caddi, cslli),
+    Load_CL_Type (clw),
+    Store_CS_Type (csw),
+    Move_CR_Type (cmv),
+    Load_CI_Type (cli),
+    Addi16sp_CI_Type (caddi16sp)
+}
+
+MicroactionMapping {
+    [ALL] : {uA_IF, uA_PC_GEN, uA_ID},
+    Arith_Ra_Rb : {uA_OF_A, uA_OF_B, vuA_ALU_arith, vuA_WB},
+    Arith_Ra : {uA_OF_A, vuA_ALU_arith, vuA_WB},
+    Arith_Rb : {uA_OF_B, vuA_ALU_arith, vuA_WB},
+    Arith_X :  {vuA_ALU_arith, vuA_WB},
+    Mul : {uA_OF_A, uA_OF_B, vuA_MUL, vuA_WB},
+    Store : {uA_OF_A, uA_OF_B, uA_ALU_mem, uA_MEM_W},
+    Load : {uA_OF_A, uA_ALU_mem, vuA_MEM_R, vuA_WB},
+    Branch_Ra_Rb : {uA_OF_A, uA_OF_B, uA_ALU_branch},
+    Branch_Ra : {uA_OF_A, uA_ALU_branch}
+}
+
+TraceValueMapping {
+    [ALL] : {
+        pc = "$pc"
+    },
+    Arith_R_Type : {
+        rs1 = "$bitfield{rs1}",
+        rs2 = "$bitfield{rs2}",
+        rd  = "$bitfield{rd}"
+    },
+    Branch_B_Type : {
+        rs1 = "$bitfield{rs1}",
+	rs2 = "$bitfield{rs2}",
+	brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)"
+    },
+    Load_I_Type : {
+        rs1 = "$bitfield{rs1}",
+	rd  = "$bitfield{rd}"
+    },
+    Arith_I_Type : {
+        rs1 = "$bitfield{rs1}",
+	rd  = "$bitfield{rd}"
+    },
+    Store_S_Type : {
+        rs1 = "$bitfield{rs1}",
+	rs2 = "$bitfield{rs2}"
+   },
+   Branch_CB_Type : {
+        rs1 = "$bitfield{rs1}",
+	brTarget = "$pc + (((int16_t)($bitfield{imm} << 7)) >> 7)"
+   },
+   Arith_CR_Type : {
+        rs1 = "$bitfield{rs1}",
+	rs2 = "$bitfield{rs2}",
+	rd  = "$bitfield{rd}"
+   },
+   Arith_CI_Type : {
+        rs1 = "$bitfield{rs1}",
+	rd  = "$bitfield{rd}"
+   },
+   Load_CL_Type	: {
+        rs1 = "$bitfield{rs1}",
+	rd  = "$bitfield{rd}"
+   },
+   Store_CS_Type : {
+        rs1 = "$bitfield{rs1}",
+	rs2 = "$bitfield{rs2}"
+   },
+   Move_CR_Type : {
+        rs2 = "$bitfield{rs2}",
+	rd  = "$bitfield{rd}"
+   },
+   Load_CI_Type : {
+	rd = "$bitfield{rd}"
+   },
+   Addi16sp_CI_Type : {
+	rs1 = "2",
+	rd  = "2"
+   }
+}
+
+/*********************************** Variants ***********************************/
+
+// With forwarding
+
+CorePerfModel SimpleRISCV_H_fw_NoBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {noBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_fw,
+        vuA_MUL = uA_MUL_fw,
+        vuA_MEM_R = uA_MEM_R_fw,
+        vuA_WB = uA_WB_fw
+    }
+)
+
+CorePerfModel SimpleRISCV_H_fw_StaBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {staBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_fw,
+        vuA_MUL = uA_MUL_fw,
+        vuA_MEM_R = uA_MEM_R_fw,
+        vuA_WB = uA_WB_fw
+    }
+)
+
+CorePerfModel SimpleRISCV_H_fw_DynBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {dynBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_fw,
+        vuA_MUL = uA_MUL_fw,
+        vuA_MEM_R = uA_MEM_R_fw,
+        vuA_WB = uA_WB_fw
+    }
+)
+
+// Without forwarding
+
+CorePerfModel SimpleRISCV_H_nfw_NoBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {noBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_nfw,
+        vuA_MUL = uA_MUL_nfw,
+        vuA_MEM_R = uA_MEM_R_nfw,
+        vuA_WB = uA_WB_nfw
+    }
+)
+
+CorePerfModel SimpleRISCV_H_nfw_StaBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {staBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_nfw,
+        vuA_MUL = uA_MUL_nfw,
+        vuA_MEM_R = uA_MEM_R_nfw,
+        vuA_WB = uA_WB_nfw
+    }
+)
+
+CorePerfModel SimpleRISCV_H_nfw_DynBrPred (
+    core : "RV32IMACFD"
+    use Pipeline : SimplePipeline
+    use ConnectorModel : {dynBranchPredModel, regModel}
+    assign Microaction : {
+        vuA_ALU_arith = uA_ALU_arith_nfw,
+        vuA_MUL = uA_MUL_nfw,
+        vuA_MEM_R = uA_MEM_R_nfw,
+        vuA_WB = uA_WB_nfw
+    }
+)
+
