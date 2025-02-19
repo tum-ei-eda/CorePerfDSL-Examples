@@ -119,7 +119,7 @@ MicroactionMapping {
 
 TraceValueMapping {
   [ALL] : {
-      pc = "$pc"
+      pc = "$resolved{$pc}"
   },
   Arith_Ra_Rb : {
     rs1 = "$bitfield{rs1}",
@@ -173,16 +173,16 @@ TraceValueMapping {
   Branch_Ra_Rb : {
     rs1 = "$bitfield{rs1}",
     rs2 = "$bitfield{rs2}",
-    brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)"
+    brTarget = "$resolved{$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)}"
   },
   jal : {
     rd = "$bitfield{rd}",
-    brTarget = "$pc + (((int32_t)($bitfield{imm} << 11)) >> 11)"
+    brTarget = "$resolved{$pc + (((int32_t)($bitfield{imm} << 11)) >> 11)}"
   },
   jalr : {
     rs1 = "$bitfield{rs1}",
     rd  = "$bitfield{rd}",
-    brTarget = "($reg{$bitfield{rs1}} + (((int16_t)($bitfield{imm} << 4)) >> 4)) & -2U"
+    brTarget = "($reg{$bitfield{rs1}} + $resolved{(((int16_t)($bitfield{imm} << 4)) >> 4)}) & -2U"
   }
 }
 

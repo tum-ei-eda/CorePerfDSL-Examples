@@ -149,7 +149,7 @@ MicroactionMapping {
 
 TraceValueMapping {
     [ALL] : {
-        pc = "$pc"
+        pc = "$resolved{$pc}"
     },
     Arith_R_Type : {
         rs1 = "$bitfield{rs1}",
@@ -159,7 +159,7 @@ TraceValueMapping {
     Branch_B_Type : {
         rs1 = "$bitfield{rs1}",
 	rs2 = "$bitfield{rs2}",
-	brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)"
+	brTarget = "$resolved{$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)}"
     },
     Load_I_Type : {
         rs1 = "$bitfield{rs1}",
@@ -175,7 +175,7 @@ TraceValueMapping {
    },
    Branch_CB_Type : {
         rs1 = "$bitfield{rs1}",
-	brTarget = "$pc + (((int16_t)($bitfield{imm} << 7)) >> 7)"
+	brTarget = "$resolved{$pc + (((int16_t)($bitfield{imm} << 7)) >> 7)}"
    },
    Arith_CR_Type : {
         rs1 = "$bitfield{rs1}",
