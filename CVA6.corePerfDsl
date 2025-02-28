@@ -26,7 +26,7 @@ Resource {Issue(0)}
 Resource {DIV(divider), DIVU(divider_u)}
 Resource {LCtrl, DCache(dCacheModel), LUnit}
 Resource {SCtrl, SUnit}
-Resource {Commit[capacity:2]}
+Resource {Commit}
 
 Microaction {
     uA_PCGen      (PCGen),
