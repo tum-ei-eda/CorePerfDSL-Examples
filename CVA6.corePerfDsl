@@ -53,8 +53,7 @@ Microaction {
     uA_ALU_def (ALU),
     uA_ALU_reg (ALU -> Xd),
     uA_ALU_br  (ALU -> Pc_c),
-    //uA_ALU_jr  (ALU -> {Xd, Pc_c}), // TODO!
-    uA_ALU_jr  (ALU -> Pc_c),
+    uA_ALU_jr  (ALU -> {Xd, Pc_c}),
     uA_MUL_I   (MUL_I),
     uA_MUL_O   (MUL_O -> Xd),
     uA_DIV     (DIV),
@@ -71,17 +70,17 @@ Microaction {
 
 /************************************ Stages & Pipeline ************************************/
 
-// IF Substages // TODO!
+// IF Substages
 Stage {
     IF_substage_0 (uA_ICacheCtrl, uA_PcPredict),
     IF_substage_1 (uA_ICache),
     IF_substage_2 (uA_IScan, uA_IScan_br, uA_IScan_j, uA_IScan_jr)
 }
 
-// IF Subpipeline // TODO!
+// IF Subpipeline
 Pipeline IF_subpipe (IF_substage_0 -> IF_substage_1 -> IF_substage_2)
 
-// EX Substages // TODO!
+// EX Substages
 Stage {
     EX_substage_alu    (uA_ALU_def, uA_ALU_reg, uA_ALU_br, uA_ALU_jr),
     EX_substage_div    (uA_DIV, uA_DIVU),
@@ -94,7 +93,7 @@ Stage {
     EX_substage_sUnit  (uA_SUnit)
 }
 
-// EX Subpipeline // TODO!
+// EX Subpipeline
 Pipeline {
     EX_subpipe_alu   (EX_substage_alu),
     EX_subpipe_mul   [blocks: EX_subpipe_alu] (EX_substage_mul_i -> EX_substage_mul_o),
@@ -103,10 +102,10 @@ Pipeline {
     EX_subpipe_store (EX_substage_sCtrl -> EX_substage_sUnit)
 }
 
-// Main stages // TODO!
+// Main stages 
 Stage {
     PC_stage  (uA_PCGen, uA_PcCorrect, uA_CacheBlock),
-    IF_stage  (IF_subpipe),
+    IF_stage  (IF_subpipe), // TODO! Capacity: 3!?
     IQ_stage  [capacity: 7, output-buffer] (uA_IQ),
     ID_stage  (uA_Decode),
     IS_stage  (uA_Issue, uA_Clobber, uA_OF_A, uA_OF_B),
@@ -114,24 +113,13 @@ Stage {
     COM_stage [capacity:2] (uA_Commit, uA_Commit_Cb)
 }
 
-// // Main stages
-// Stage {
-//     PC_stage  (uA_PCGen, uA_PcCorrect, uA_CacheBlock),
-//     IF_stage  (uA_ICacheCtrl, uA_PcPredict, uA_ICache, uA_IScan, uA_IScan_br, uA_IScan_j, uA_IScan_jr),
-//     IQ_stage  [capacity: 7, output-buffer](uA_IQ),
-//     ID_stage  (uA_Decode),
-//     IS_stage  (uA_Issue, uA_Clobber, uA_OF_A, uA_OF_B),
-//     EX_stage  [capacity: 8, output-buffer] (uA_ALU_def, uA_ALU_reg, uA_ALU_br, uA_ALU_jr, uA_DIV, uA_DIVU, uA_MUL_I, uA_MUL_O, uA_LCtrl, uA_DCache, uA_LUnit, uA_SCtrl, uA_SUnit),
-//     COM_stage [capacity:2](uA_Commit, uA_Commit_Cb)
-// }
-
 Pipeline CVA6_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage -> EX_stage -> COM_stage)
 
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
 
 ConnectorModel dynBranchPredModel (
-    link : "models/cva6/BranchPredictionModel.h"
+    link : "models/cva6/CVA6_BranchPredictionModel.h"
     trace : {pc, brTarget, rs1, rd, imm}
     connectorIn : {Pc_p, Pc_p_j, Pc_p_jr, Pc_c}
     connectorOut : {Pc_mp, Pc_pt}
@@ -279,7 +267,7 @@ TraceValueMapping {
         addr = "($reg{$bitfield{rs1}} + $bitfield{imm})"
     },
     Store: {
-        rs1 = "$bitfield{rs1 [(0:19,15)]}",
-        rs2 = "$bitfield{rs2 [(0:24,20)]}"
+        rs1 = "$bitfield{rs1}",
+        rs2 = "$bitfield{rs2}"
     }
 }
