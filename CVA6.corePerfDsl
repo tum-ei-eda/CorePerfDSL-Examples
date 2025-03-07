@@ -21,7 +21,7 @@ Connector {Xa, Xb, Xd}
 Connector {Cb_out, Cb_in}
 
 Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O}
-Resource {ICache(iCacheResModel)}
+Resource {ICache(iCacheModel)}
 Resource {Issue(0)}
 Resource {DIV(divider), DIVU(divider_u)}
 Resource {LCtrl, DCache(dCacheModel), LUnit}
@@ -60,7 +60,7 @@ Microaction {
     uA_DIVU    (DIVU),
     uA_LCtrl   (LCtrl),
     uA_DCache  (DCache),
-    uA_LUnit   (LUnit),
+    uA_LUnit   (LUnit -> Xd),
     uA_SCtrl   (SCtrl),
     uA_SUnit   (SUnit),
 
@@ -105,7 +105,7 @@ Pipeline {
 // Main stages 
 Stage {
     PC_stage  (uA_PCGen, uA_PcCorrect, uA_CacheBlock),
-    IF_stage  (IF_subpipe), // TODO! Capacity: 3!?
+    IF_stage  [capacity:3] (IF_subpipe),
     IQ_stage  [capacity: 7, output-buffer] (uA_IQ),
     ID_stage  (uA_Decode),
     IS_stage  (uA_Issue, uA_Clobber, uA_OF_A, uA_OF_B),
@@ -118,18 +118,18 @@ Pipeline CVA6_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
 
+Model iCacheModel(
+    link : "models/cva6/ICacheModel.h"
+    trace : {pc}
+    connectorIn : {Ic_in}
+    connectorOut : {Ic_out}    
+)
+
 ConnectorModel dynBranchPredModel (
-    link : "models/cva6/CVA6_BranchPredictionModel.h"
+    link : "models/cva6/BranchPredictionModel.h"
     trace : {pc, brTarget, rs1, rd, imm}
     connectorIn : {Pc_p, Pc_p_j, Pc_p_jr, Pc_c}
     connectorOut : {Pc_mp, Pc_pt}
-)
-
-ConnectorModel iCacheConModel (
-    link : "models/cva6/ICacheConModel.h"
-    trace : {pc}
-    connectorIn : {Ic_in}
-    connectorOut : {Ic_out}
 )
 
 ConnectorModel regModel (
@@ -146,18 +146,13 @@ ConnectorModel clobberModel (
     connectorOut : Cb_out
 )
 
-ResourceModel iCacheResModel (
-    link : "models/cva6/ICacheResModel.h"
-    trace : pc
-)
-
 ResourceModel divider (
-  link: "models/cva6/CVA6_DividerModel.h"
+  link: "models/cva6/DividerModel.h"
   trace: {rs1_data, rs2_data}
 )
 
 ResourceModel divider_u (
-  link: "models/cva6/CVA6_DividerUnsignedModel.h"
+  link: "models/cva6/DividerUnsignedModel.h"
   trace: {rs1_data, rs2_data}
 )
 
@@ -170,7 +165,7 @@ ResourceModel dCacheModel (
 CorePerfModel CVA6 (
   core : "RV64IMACFD"
   use Pipeline : CVA6_pipeline
-  use ConnectorModel : {regModel, dynBranchPredModel, clobberModel, iCacheConModel}
+  use ConnectorModel : {regModel, dynBranchPredModel, clobberModel, iCacheModel}
 )
 
 /*********************************** Instruction Section ***********************************/
@@ -191,7 +186,7 @@ InstrGroup {
 }
 
 MicroactionMapping {
-    [ALL] : {uA_PCGen, uA_PcCorrect, uA_CacheBlock, uA_ICacheCtrl, uA_ICache, uA_IQ, uA_Decode, uA_Issue},
+    [ALL] : {uA_PCGen, uA_PcCorrect, uA_CacheBlock, uA_ICacheCtrl, uA_PcPredict, uA_ICache, uA_IQ, uA_Decode, uA_Issue},
     Default : {uA_IScan, uA_ALU_def, uA_Commit},
     Arith_0 : {uA_IScan, uA_ALU_reg, uA_Commit_Cb},
     Arith_Rs1 : {uA_IScan, uA_OF_A, uA_Clobber, uA_ALU_reg, uA_Commit_Cb},
@@ -229,18 +224,21 @@ TraceValueMapping {
         rs1 = "$bitfield{rs1}",
         rs2 = "$bitfield{rs2}",
         brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)",
-        imm = "$bitfield{imm}"
+        //imm = "$bitfield{imm}"
+	imm = "($bitfield{imm} | (($bitfield{imm} & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
     },
     Jump : {
         rd = "$bitfield{rd}",
         brTarget = "$pc + (((int32_t)($bitfield{imm} << 11)) >> 11)",
-        imm = "$bitfield{imm}"
+        //imm = "$bitfield{imm}"
+	imm = "($bitfield{imm} | (($bitfield{imm} & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
     },
     JumpR : {
         rs1 = "$bitfield{rs1}",
         rd = "$bitfield{rd}",
         brTarget = "($reg{$bitfield{rs1}} + (((int16_t)($bitfield{imm} << 4)) >> 4)) & -2U",
-        imm = "$bitfield{imm}"
+        //imm = "$bitfield{imm}"
+	imm = "($bitfield{imm} | ((($bitfield{imm} != 0) & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
     },
     Mul : {
         rs1 = "$bitfield{rs1}",
