@@ -1,0 +1,132 @@
+/*
+ * Copyright 2025 Chair of EDA, Technical University of Munich
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *	 http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*********************************** Microaction Section ***********************************/
+
+Connector {Pc, Pc_np, Pc_p}
+
+Resource{IPort, PCGen, Decoder, Decoder_V, Dispatcher, ALU, LSU, ALU_V(5), LSU_V(5), Reg, Reg_V, ResCtrl}
+
+Microaction {
+  uA_IFetch(Pc -> IPort),
+  uA_PCGenerate(Pc -> PCGen -> Pc_np),
+  uA_SDecode(Decoder),
+  uA_VDecode(Decoder_V),
+  uA_Dispatch(Dispatcher),
+  uA_SArith(ALU),
+  uA_SBranch(ALU -> Pc_p),
+  uA_SMem(LSU),
+  uA_VArith(ALU_V),
+  uA_VMem(LSU_V),
+  uA_SRegWrite(Reg),
+  uA_VRegWrite(Reg_V),
+  uA_Result(ResCtrl)
+}
+
+/************************************ Stages & Pipeline ************************************/
+
+/** Scalar pipeline **/
+
+Stage {
+  EX_stage (uA_SArith, uA_SMem, uA_SBranch),
+  WB_stage (uA_SRegWrite)
+}
+
+Pipeline Scalar_pipeline (EX_stage -> WB_stage)
+
+/** Vector pipeline **/
+
+// Substages of VEX_stage
+Stage {
+  VEX1_substage (uA_VArith),
+  VEX2_substage (uA_VMem)
+}
+
+// Subpipeline of VEX_stage
+Pipeline {
+  VPipe1_subpipeline (VEX1_substage),
+  VPipe2_subpipeline (VEX2_substage)
+}
+
+Stage {
+  DISP_stage (uA_Dispatch),
+  VEX_stage [capacity:2](VPipe1_subpipeline, VPipe2_subpipeline),
+  VWB_stage (uA_VRegWrite),
+  RES_stage (uA_Result)
+}
+
+Pipeline Vector_pipeline (DISP_stage -> VEX_stage -> VWB_stage -> RES_stage)
+
+/** Common pipeline **/
+
+// Shared stages
+Stage {
+  IF_stage (uA_IFetch),
+  ID_stage (uA_SDecode, uA_VDecode)
+}
+
+Pipeline Parallel_pipeline (Scalar_pipeline | Vector_pipeline)
+
+Pipeline Vicuna_pipeline (IF_stage -> ID_stage -> Parallel_pipeline)
+
+/************************************* External Models *************************************/
+TraceValue {pc, brTarget}
+
+ConnectorModel staBranchPredModel (
+  link : "models/common/StaticBranchPredictModel.h"
+  trace : {pc, brTarget}
+  connectorIn : {Pc_np, Pc_p}
+  connectorOut : Pc
+)
+
+/*********************************** Instruction Section ***********************************/
+InstrGroup {
+  S_Arith (add, sub, xor, or, and, slt, sltu, sll, srl, sra, addi, xori, ori, andi, slti, sltiu, slli, srli, srai, auipc, lui, mul, mulh, mulhu, mulhsu, div, rem, divu, remu),
+  S_Branch (beq, bne, blt, bge, bltu, bgeu),
+  S_Mem(sb, sh, sw, lw, lh, lhu, lb, lbu),
+  V_Arith(vadd),
+  V_Mem(vl),
+  V_Super(vsuper),
+  default ([?])
+}
+
+MicroactionMapping {
+  [ALL] :   {uA_IFetch, uA_SDecode},
+  S_Arith : {uA_SArith, uA_SRegWrite},
+  S_Branch: {uA_SBranch},
+  S_Mem :   {uA_SMem, uA_SRegWrite},
+  V_Arith : {uA_VDecode, uA_Dispatch, uA_VArith, uA_VRegWrite, uA_Result},
+  V_Mem :   {uA_VDecode, uA_Dispatch, uA_VMem, uA_VRegWrite, uA_Result},
+  V_Super : {uA_VDecode, uA_Dispatch, uA_VArith, uA_VMem, uA_VRegWrite, uA_Result},
+  default : {uA_SArith}
+}
+
+
+TraceValueMapping {
+  [ALL] : {
+      pc = "$pc"
+  },
+  S_Branch : {
+      brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)"
+  }
+}
+
+/**************************************** Variants *****************************************/
+CorePerfModel Vicuna (
+  core : "<VectorCoreDSL-Name>"
+  use Pipeline : Vicuna_pipeline
+  use ConnectorModel : {staBranchPredModel}
+)
