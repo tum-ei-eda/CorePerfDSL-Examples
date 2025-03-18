@@ -224,21 +224,18 @@ TraceValueMapping {
         rs1 = "$bitfield{rs1}",
         rs2 = "$bitfield{rs2}",
         brTarget = "$pc + (((int16_t)($bitfield{imm} << 3)) >> 3)",
-        //imm = "$bitfield{imm}"
-	imm = "($bitfield{imm} | (($bitfield{imm} & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
+	imm = "(((int16_t)($bitfield{imm} << 3)) >> 3)"
     },
     Jump : {
         rd = "$bitfield{rd}",
         brTarget = "$pc + (((int32_t)($bitfield{imm} << 11)) >> 11)",
-        //imm = "$bitfield{imm}"
-	imm = "($bitfield{imm} | (($bitfield{imm} & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
+	imm = "(((int32_t)($bitfield{imm} << 11)) >> 11)"
     },
     JumpR : {
         rs1 = "$bitfield{rs1}",
         rd = "$bitfield{rd}",
         brTarget = "($reg{$bitfield{rs1}} + (((int16_t)($bitfield{imm} << 4)) >> 4)) & -2U",
-        //imm = "$bitfield{imm}"
-	imm = "($bitfield{imm} | ((($bitfield{imm} != 0) & 0x1000) ? 0xFFFFFFFFFFFFE000 : 0))" // TODO: Use different sign extend?
+	imm = "(((int16_t)($bitfield{imm} << 4)) >> 4)"
     },
     Mul : {
         rs1 = "$bitfield{rs1}",
