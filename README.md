@@ -9,6 +9,14 @@ Model of the 4-stage RISC-V CPU CV32E40P.
 - Static branch prediction
 - No memory model
 
+### CVA6
+Model of the 6-stage RISC-V CPU CVA6.
+- Modelled instructions: RV64IM
+- Instructions queue (IQ) and execute stage with scoreboard
+- Dual-commit
+- Dynamic branch prediction
+- Memory model with internal L1 instructiona and data caches
+
 ### SimpleRISCV
 Custom example to illustrate flexiblity of CorePerDSL.
 - 5-stage, Harvard microarchitecture
@@ -19,6 +27,6 @@ Custom example to illustrate flexiblity of CorePerDSL.
 
 ## Version
 
-This is version v1.0.
+This is version v2.0.
 
 This repository does not contain any submodules.
