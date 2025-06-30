@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Chair of EDA, Technical University of Munich
+ * Copyright 2025 Chair of EDA, Technical University of Munich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ ConnectorModel regModel (
   connectorOut : {Xa, Xb}
 )
 
-ConnectorModel staBranchPredModel (
+Model staBranchPredModel [info-trace] (
   link : "models/common/StaticBranchPredictModel.h"
   trace : {pc, brTarget}
   connectorIn : {Pc_np, Pc_p}

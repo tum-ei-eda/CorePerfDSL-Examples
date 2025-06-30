@@ -118,14 +118,14 @@ Pipeline CVA6_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
 
-Model iCacheModel(
+Model iCacheModel [info-trace](
     link : "models/cva6/ICacheModel.h"
     trace : {pc}
     connectorIn : {Ic_in}
     connectorOut : {Ic_out}    
 )
 
-ConnectorModel dynBranchPredModel (
+Model dynBranchPredModel [info-trace] (
     link : "models/cva6/BranchPredictionModel.h"
     trace : {pc, brTarget, rs1, rd, imm}
     connectorIn : {Pc_p, Pc_p_j, Pc_p_jr, Pc_c}
@@ -156,7 +156,7 @@ ResourceModel divider_u (
   trace: {rs1_data, rs2_data}
 )
 
-ResourceModel dCacheModel (
+Model dCacheModel [info-trace](
     link: "models/cva6/DCacheModel.h"
     trace : addr
 )
