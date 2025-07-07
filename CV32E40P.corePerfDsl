@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/*********************************** Architecture Information ***********************************/
+
+Architecture(
+  name: "CV32E40P"
+  isa: "RV32IMACFD"
+)
+
 /*********************************** Microaction Section ***********************************/
 Connector {Pc, Pc_np, Pc_p}
 Connector {Xa, Xb, Xd}
@@ -187,8 +194,7 @@ TraceValueMapping {
 }
 
 /**************************************** Variants *****************************************/
-CorePerfModel CV32E40P (
-  core : "RV32IMACFD"
+Variant CV32E40P (
   use Pipeline : CV32E40P_pipeline
   use ConnectorModel : {regModel, staBranchPredModel}
 )

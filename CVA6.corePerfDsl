@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/*********************************** Architecture Information ***********************************/
+
+Architecture(
+    name: "CVA6"
+    isa: "RV64IMACFD"
+)
+
 /*********************************** Microaction Section ***********************************/
 Connector {Pc_mp, Pc_pt, Pc_p, Pc_p_j, Pc_p_jr, Pc_c}
 Connector {Ic_out, Ic_in}
@@ -162,8 +169,7 @@ ResourceModel dCacheModel (
 )
 
 /**************************************** Variants *****************************************/
-CorePerfModel CVA6 (
-  core : "RV64IMACFD"
+Variant CVA6 (
   use Pipeline : CVA6_pipeline
   use ConnectorModel : {regModel, dynBranchPredModel, clobberModel, iCacheModel}
 )

@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
+/*********************************** Architecture Information ***********************************/
+
+Architecture(
+	name: "SimpleRISCV"
+	isa: "RV32IMACFD" 
+)
+
 /*********************************** Microaction Section ***********************************/
 Connector {Pc, Pc_p, Pc_np}
 Connector {Xa, Xb, Xd}
 
-Resource {PC_Gen, Decoder, ALU, Multi, Reg, DPort_W(dMemModel), DPort_R(dMemModel), IPort_R(iMemModel)}
+Resource {PC_Gen, Decoder, ALU, Multi, Reg, DPort_W(dMemWPortModel), DPort_R(dMemRPortModel), IPort_R(iMemPortModel)}
 
 // General Microactions
 Microaction {
@@ -67,7 +74,22 @@ Stage {
 Pipeline SimplePipeline (IF_stage -> ID_stage -> EX_stage -> MEM_stage -> WB_stage)
 
 /*********************************** External Models ***********************************/
-TraceValue {rs1, rs2, rd, pc, brTarget}
+TraceValue {rs1, rs2, rd, pc, brTarget, addr}
+
+Model iMemPortModel [config] (
+    link : "models/config_memory/IMemoryPortModel.h"
+    trace : pc
+)
+
+Model dMemRPortModel [config] (
+    link : "models/config_memory/DMemoryReadPortModel.h"
+    trace : addr
+)
+
+Model dMemWPortModel [config] (
+    link : "models/config_memory/DMemoryWritePortModel.h"
+    trace : addr
+)
 
 ConnectorModel regModel (
     link : "models/common/StandardRegisterModel.h"
@@ -94,14 +116,6 @@ ConnectorModel noBranchPredModel (
     link : "models/common/NoBranchPredictModel.h"
     connectorIn : {Pc_p, Pc_np}
     connectorOut : Pc
-)
-
-ResourceModel iMemModel (
-    link : "models/common/DummyMemoryModel.h"
-)
-
-ResourceModel dMemModel (
-    link : "models/common/DummyMemoryModel.h"
 )
 
 /*********************************** Instruction Section ***********************************/
@@ -163,7 +177,8 @@ TraceValueMapping {
     },
     Load_I_Type : {
         rs1 = "$bitfield{rs1}",
-	rd  = "$bitfield{rd}"
+	    rd  = "$bitfield{rd}",
+        addr = "($reg{$bitfield{rs1}} + $bitfield{imm})"
     },
     Arith_I_Type : {
         rs1 = "$bitfield{rs1}",
@@ -171,7 +186,8 @@ TraceValueMapping {
     },
     Store_S_Type : {
         rs1 = "$bitfield{rs1}",
-	rs2 = "$bitfield{rs2}"
+	    rs2 = "$bitfield{rs2}",
+        addr = "($reg{$bitfield{rs1}} + $bitfield{imm})"
    },
    Branch_CB_Type : {
         rs1 = "$bitfield{rs1}",
@@ -211,8 +227,7 @@ TraceValueMapping {
 
 // With forwarding
 
-CorePerfModel SimpleRISCV_H_fw_NoBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_fw_NoBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {noBranchPredModel, regModel}
     assign Microaction : {
@@ -223,8 +238,7 @@ CorePerfModel SimpleRISCV_H_fw_NoBrPred (
     }
 )
 
-CorePerfModel SimpleRISCV_H_fw_StaBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_fw_StaBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {staBranchPredModel, regModel}
     assign Microaction : {
@@ -235,8 +249,7 @@ CorePerfModel SimpleRISCV_H_fw_StaBrPred (
     }
 )
 
-CorePerfModel SimpleRISCV_H_fw_DynBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_fw_DynBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {dynBranchPredModel, regModel}
     assign Microaction : {
@@ -249,8 +262,7 @@ CorePerfModel SimpleRISCV_H_fw_DynBrPred (
 
 // Without forwarding
 
-CorePerfModel SimpleRISCV_H_nfw_NoBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_nfw_NoBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {noBranchPredModel, regModel}
     assign Microaction : {
@@ -261,8 +273,7 @@ CorePerfModel SimpleRISCV_H_nfw_NoBrPred (
     }
 )
 
-CorePerfModel SimpleRISCV_H_nfw_StaBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_nfw_StaBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {staBranchPredModel, regModel}
     assign Microaction : {
@@ -273,8 +284,7 @@ CorePerfModel SimpleRISCV_H_nfw_StaBrPred (
     }
 )
 
-CorePerfModel SimpleRISCV_H_nfw_DynBrPred (
-    core : "RV32IMACFD"
+Variant SimpleRISCV_H_nfw_DynBrPred (
     use Pipeline : SimplePipeline
     use ConnectorModel : {dynBranchPredModel, regModel}
     assign Microaction : {
