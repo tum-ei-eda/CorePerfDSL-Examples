@@ -16,13 +16,11 @@
 
 /*********************************** Microaction Section ***********************************/
 Connector {Pc_mp, Pc_pt, Pc_p, Pc_p_j, Pc_p_jr, Pc_c}
-Connector {Ic_out, Ic_in}
 Connector {Xa, Xb, Xd}
 Connector {Cb_out, Cb_in}
 
-Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O}
+Resource {PCGen, ICacheCtrl, IScan, Decoder, Issue, ALU, MUL_I, MUL_O}
 Resource {ICache(iCacheModel)}
-Resource {Issue(0)}
 Resource {DIV(divider), DIVU(divider_u)}
 Resource {LCtrl, DCache(dCacheModel), LUnit}
 Resource {SCtrl, SUnit}
@@ -31,17 +29,14 @@ Resource {Commit}
 Microaction {
     uA_PCGen      (PCGen),
     uA_PcCorrect  (Pc_mp),
-    uA_CacheBlock (Ic_out),
 
     uA_ICacheCtrl (ICacheCtrl),
     uA_PcPredict  (Pc_pt),
-    uA_ICache     (ICache -> Ic_in),
+    uA_ICache     (ICache),
     uA_IScan      (IScan),
     uA_IScan_br   (IScan -> Pc_p),
     uA_IScan_j    (IScan -> Pc_p_j),
     uA_IScan_jr   (IScan -> Pc_p_jr),
-
-    uA_IQ (IQInsert),
 
     uA_Decode (Decoder),
 
@@ -104,16 +99,15 @@ Pipeline {
 
 // Main stages 
 Stage {
-    PC_stage  (uA_PCGen, uA_PcCorrect, uA_CacheBlock),
-    IF_stage  [capacity:3] (IF_subpipe),
-    IQ_stage  [capacity: 7, output-buffer] (uA_IQ),
+    PC_stage  (uA_PCGen, uA_PcCorrect),
+    IF_stage  [capacity:9, output-buffer] (IF_subpipe),
     ID_stage  (uA_Decode),
     IS_stage  (uA_Issue, uA_Clobber, uA_OF_A, uA_OF_B),
     EX_stage  [capacity: 8, output-buffer] (EX_subpipe_alu, EX_subpipe_mul, EX_subpipe_div, EX_subpipe_load, EX_subpipe_store),
     COM_stage [capacity:2] (uA_Commit, uA_Commit_Cb)
 }
 
-Pipeline CVA6_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage -> EX_stage -> COM_stage)
+Pipeline CVA6_pipeline (PC_stage -> IF_stage -> ID_stage -> IS_stage -> EX_stage -> COM_stage)
 
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
@@ -121,8 +115,6 @@ TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
 Model iCacheModel [info-trace](
     link : "models/cva6/ICacheModel.h"
     trace : {pc}
-    connectorIn : {Ic_in}
-    connectorOut : {Ic_out}    
 )
 
 Model dynBranchPredModel [info-trace] (
@@ -186,7 +178,7 @@ InstrGroup {
 }
 
 MicroactionMapping {
-    [ALL] : {uA_PCGen, uA_PcCorrect, uA_CacheBlock, uA_ICacheCtrl, uA_PcPredict, uA_ICache, uA_IQ, uA_Decode, uA_Issue},
+    [ALL] : {uA_PCGen, uA_PcCorrect, uA_ICacheCtrl, uA_PcPredict, uA_ICache, uA_Decode, uA_Issue},
     Default : {uA_IScan, uA_ALU_def, uA_Commit},
     Arith_0 : {uA_IScan, uA_ALU_reg, uA_Commit_Cb},
     Arith_Rs1 : {uA_IScan, uA_OF_A, uA_Clobber, uA_ALU_reg, uA_Commit_Cb},
