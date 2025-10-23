@@ -20,8 +20,7 @@ Connector {Ic_out, Ic_in}
 Connector {Xa, Xb, Xd}
 Connector {Cb_out, Cb_in}
 
-Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O, DOTPROD_I(16), DOTPROD_O(0)}
-// Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O}
+Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O}
 Resource {ICache(iCacheModel)}
 Resource {Issue(0)}
 Resource {DIV(divider), DIVU(divider_u)}
@@ -57,8 +56,6 @@ Microaction {
     uA_ALU_jr  (ALU -> {Xd, Pc_c}),
     uA_MUL_I   (MUL_I),
     uA_MUL_O   (MUL_O -> Xd),
-    uA_DOTPROD_I     (DOTPROD_I),
-    uA_DOTPROD_O     (DOTPROD_O -> Xd),
     uA_DIV     (DIV),
     uA_DIVU    (DIVU),
     uA_LCtrl   (LCtrl),
@@ -89,8 +86,6 @@ Stage {
     EX_substage_div    (uA_DIV, uA_DIVU),
     EX_substage_mul_i  (uA_MUL_I),
     EX_substage_mul_o  (uA_MUL_O),
-    EX_substage_dotprod_i    (uA_DOTPROD_I),
-    EX_substage_dotprod_o    (uA_DOTPROD_O),
     EX_substage_lCtrl  (uA_LCtrl),
     EX_substage_dCache (uA_DCache),
     EX_substage_lUnit  (uA_LUnit),
@@ -102,21 +97,19 @@ Stage {
 Pipeline {
     EX_subpipe_alu   (EX_substage_alu),
     EX_subpipe_mul   [blocks: EX_subpipe_alu] (EX_substage_mul_i -> EX_substage_mul_o),
-    EX_subpipe_dotprod   [blocks: EX_subpipe_alu] (EX_substage_dotprod_i -> EX_substage_dotprod_o),
     EX_subpipe_div   [blocks: {EX_subpipe_alu, EX_subpipe_mul}] (EX_substage_div),
     EX_subpipe_load  (EX_substage_lCtrl -> EX_substage_dCache -> EX_substage_lUnit),
     EX_subpipe_store (EX_substage_sCtrl -> EX_substage_sUnit)
 }
 
-// Main stages
+// Main stages 
 Stage {
     PC_stage  (uA_PCGen, uA_PcCorrect, uA_CacheBlock),
     IF_stage  [capacity:3] (IF_subpipe),
     IQ_stage  [capacity: 7, output-buffer] (uA_IQ),
     ID_stage  (uA_Decode),
     IS_stage  (uA_Issue, uA_Clobber, uA_OF_A, uA_OF_B),
-    EX_stage  [capacity: 8, output-buffer] (EX_subpipe_alu, EX_subpipe_mul, EX_subpipe_dotprod, EX_subpipe_div, EX_subpipe_load, EX_subpipe_store),
-    // EX_stage  [capacity: 8, output-buffer] (EX_subpipe_alu, EX_subpipe_mul, EX_subpipe_div, EX_subpipe_load, EX_subpipe_store),
+    EX_stage  [capacity: 8, output-buffer] (EX_subpipe_alu, EX_subpipe_mul, EX_subpipe_div, EX_subpipe_load, EX_subpipe_store),
     COM_stage [capacity:2] (uA_Commit, uA_Commit_Cb)
 }
 
@@ -129,7 +122,7 @@ Model iCacheModel(
     link : "models/cva6/ICacheModel.h"
     trace : {pc}
     connectorIn : {Ic_in}
-    connectorOut : {Ic_out}
+    connectorOut : {Ic_out}    
 )
 
 ConnectorModel dynBranchPredModel (
@@ -186,7 +179,6 @@ InstrGroup {
     Jump (jal),
     JumpR (jalr),
     Mul (mul, mulh, mulhu, mulhsu, mulw),
-    Dotprod (dotp),
     Div (div, rem, divw, remw),
     DivU (divu, remu, divuw, remuw),
     Load (lw, lh, lhu, lb, lbu, ld, lwu),
@@ -203,7 +195,6 @@ MicroactionMapping {
     Jump : {uA_IScan_j, uA_Clobber, uA_ALU_reg, uA_Commit_Cb},
     JumpR : {uA_IScan_jr, uA_OF_A, uA_Clobber, uA_ALU_jr, uA_Commit_Cb},
     Mul : {uA_IScan, uA_OF_A, uA_OF_B, uA_Clobber, uA_MUL_I, uA_MUL_O, uA_Commit_Cb},
-    Dotprod : {uA_IScan, uA_OF_A, uA_OF_B, uA_Clobber, uA_DOTPROD_I, uA_DOTPROD_O, uA_Commit_Cb},
     Div : {uA_IScan, uA_OF_A, uA_OF_B, uA_Clobber, uA_DIV, uA_Commit_Cb},
     DivU : {uA_IScan, uA_OF_A, uA_OF_B, uA_Clobber, uA_DIVU, uA_Commit_Cb},
     Load : {uA_IScan, uA_OF_A, uA_Clobber, uA_LCtrl, uA_DCache, uA_LUnit, uA_Commit_Cb},
@@ -247,11 +238,6 @@ TraceValueMapping {
 	imm = "$resolved{(((int16_t)($bitfield{imm} << 4)) >> 4)}"
     },
     Mul : {
-        rs1 = "$bitfield{rs1}",
-        rs2 = "$bitfield{rs2}",
-        rd  = "$bitfield{rd}"
-    },
-    Dotprod : {
         rs1 = "$bitfield{rs1}",
         rs2 = "$bitfield{rs2}",
         rd  = "$bitfield{rd}"

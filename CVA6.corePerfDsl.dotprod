@@ -20,7 +20,7 @@ Connector {Ic_out, Ic_in}
 Connector {Xa, Xb, Xd}
 Connector {Cb_out, Cb_in}
 
-Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O, DOTPROD_I(16), DOTPROD_O(0)}
+Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O, DOTPROD_I(2), DOTPROD_O(0)}
 // Resource {PCGen, ICacheCtrl, IScan, IQInsert, Decoder, ALU, MUL_I, MUL_O}
 Resource {ICache(iCacheModel)}
 Resource {Issue(0)}
