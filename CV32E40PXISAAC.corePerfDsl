@@ -70,7 +70,7 @@ Stage {
   WB_stage (uA_Memory_R, uA_Memory_W)
 }
 
-Pipeline CV32E40P_pipeline (IF_stage -> ID_stage -> EX_stage -> WB_stage)
+Pipeline CV32E40PXISAAC_pipeline (IF_stage -> ID_stage -> EX_stage -> WB_stage)
 
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, brTarget, rs2_data}
@@ -107,7 +107,7 @@ InstrGroup {
   Mul_Ra_Rb (mul),
   MulH_Ra_Rb (mulh, mulhu, mulhsu),
   // = XISAAC Instr Groups =
-  Isaac_CUSTOM0 (custom0),
+  XIsaac_CUSTOM0 (custom0),
   // -----------------------
   Div_Ra_Rb (div, rem),
   DivU_Ra_Rb (divu, remu),
@@ -218,8 +218,8 @@ TraceValueMapping {
 }
 
 /**************************************** Variants *****************************************/
-CorePerfModel CV32E40P (
+CorePerfModel CV32E40PXISAAC (
   core : "RV32IMACFD"
-  use Pipeline : CV32E40P_pipeline
+  use Pipeline : CV32E40PXISAAC_pipeline
   use ConnectorModel : {regModel, staBranchPredModel}
 )

@@ -135,7 +135,7 @@ Stage {
     COM_stage [capacity:2] (uA_Commit, uA_Commit_Cb)
 }
 
-Pipeline CVA6_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage -> EX_stage -> COM_stage)
+Pipeline CVA6XISAAC_pipeline (PC_stage -> IF_stage -> IQ_stage -> ID_stage -> IS_stage -> EX_stage -> COM_stage)
 
 /************************************* External Models *************************************/
 TraceValue {rs1, rs2, rd, pc, addr, brTarget, imm, rs1_data, rs2_data}
@@ -184,9 +184,9 @@ ResourceModel dCacheModel (
 )
 
 /**************************************** Variants *****************************************/
-CorePerfModel CVA6 (
+CorePerfModel CVA6XISAAC (
   core : "RV64IMACFD"
-  use Pipeline : CVA6_pipeline
+  use Pipeline : CVA6XISAAC_pipeline
   use ConnectorModel : {regModel, dynBranchPredModel, clobberModel, iCacheModel}
 )
 
