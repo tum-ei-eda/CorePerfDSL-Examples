@@ -2,5 +2,5 @@
 <%
 instr_cycles, = instr_timing
 %>\
-Resource {${instr_name}({instr_cycles})}
+Resource {${instr_name}(${instr_cycles})}
 %endfor
