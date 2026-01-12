@@ -115,7 +115,7 @@ def main():
                     operand_field = operand_name
                     operands_map[operand_name] = (operand_field, operand_type, operand_dir)
                 instr_operands_map[instr_name] = operands_map
-                instr_cycles = instr_latencies[instr_name]
+                instr_cycles = instr_latencies2[instr_name]
                 instr_timing = (instr_cycles,)
                 instrs_timing[instr_name] = instr_timing
             instr_names = list(instr_operands_map.keys())
