@@ -1,0 +1,22 @@
+% for instr_name, instr_operands in instr_operands_map.items():
+  XIsaac_${instr_name} : {\
+uA_Decode, \
+% for operand_name, data in instr_operands.items():
+<%
+operand_field, operand_type, operand_dir = data
+%>\
+% if operand_dir == "IN":
+% if operand_name == "rs1":
+uA_OF_A, \
+% elif operand_name == "rs2":
+uA_OF_B, \
+% else:
+<%
+raise ValueError(f"Unsupported operand: {operand_name}")
+%>
+% endif
+% endif
+% endfor
+uA_${instr_name}\
+},
+%endfor
