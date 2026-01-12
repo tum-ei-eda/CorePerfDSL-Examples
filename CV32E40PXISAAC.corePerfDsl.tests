@@ -21,8 +21,10 @@ Connector {Xa, Xb, Xd}
 Resource {PCGen, Decoder, JumpDecoder, ALU, LSU, CSR}
 Resource {MUL, MULH(5)}
 // = XISAAC Resources =
-Resource {CUSTOM0(1)}
-Resource {CUSTOM1(1)}
+// Resource {CUSTOM0(1)}
+Resource {CUSTOM0_I(0), CUSTOM0_O(4)}
+// Resource {CUSTOM1(1)}
+Resource {CUSTOM1_I(0), CUSTOM1_O(4)}
 
 // --------------------
 Resource {DIV(divider), DIVU(divider_u)}
@@ -43,8 +45,12 @@ Microaction {
   uA_MUL           (MUL -> Xd),
   uA_MULH          (MULH -> Xd),
   // = XISAAC Microactions =
-    uA_CUSTOM0    (CUSTOM0 -> Xd),
-    uA_CUSTOM1    (CUSTOM1 -> Xd),
+  // uA_CUSTOM0       (CUSTOM0 -> Xd),
+  uA_CUSTOM0_I       (CUSTOM0_I),
+  uA_CUSTOM0_O       (CUSTOM0_O -> Xd),
+  // uA_CUSTOM1       (CUSTOM1 -> Xd),
+  uA_CUSTOM1_I       (CUSTOM1_I),
+  uA_CUSTOM1_O       (CUSTOM1_O -> Xd),
 
   // -----------------------
   uA_DIV           (DIV -> Xd),
@@ -54,6 +60,23 @@ Microaction {
 }
 
 /************************************ Stages & Pipeline ************************************/
+
+// EX Substages
+Stage {
+    EX_substage_CUSTOM0_i    (uA_CUSTOM0_I),
+    EX_substage_CUSTOM0_o    (uA_CUSTOM0_O),
+    EX_substage_CUSTOM1_i    (uA_CUSTOM1_I),
+    EX_substage_CUSTOM1_o    (uA_CUSTOM1_O)
+}
+
+// EX Subpipeline
+Pipeline {
+    // = XISAAC EX Pipeline =
+    // EX_subpipe_CUSTOM0 [blocks: EX_subpipe_CUSTOM1] (EX_substage_CUSTOM0_i -> EX_substage_CUSTOM0_o),
+    // EX_subpipe_CUSTOM1 [blocks: EX_subpipe_CUSTOM0] (EX_substage_CUSTOM1_i -> EX_substage_CUSTOM1_o)
+    EX_subpipe_CUSTOM0 (EX_substage_CUSTOM0_i -> EX_substage_CUSTOM0_o),
+    EX_subpipe_CUSTOM1 (EX_substage_CUSTOM1_i -> EX_substage_CUSTOM1_o)
+}
 
 Stage {
   IF_stage (uA_IFetch, uA_PCGen),
@@ -66,9 +89,10 @@ Stage {
     uA_MUL,
     uA_MULH,
     // = XISAAC EX stage =
-    uA_CUSTOM0,
-    uA_CUSTOM1,
-
+    // uA_CUSTOM0,
+    // uA_CUSTOM1,
+    EX_subpipe_CUSTOM0,
+    EX_subpipe_CUSTOM1,
     // -------------------
     uA_DIV,
     uA_DIVU
@@ -113,9 +137,9 @@ InstrGroup {
   Mul_Ra_Rb (mul),
   MulH_Ra_Rb (mulh, mulhu, mulhsu),
   // = XISAAC Instr Groups =
-  
-  XIsaac_CUSTOM0 (custom0),   
-  XIsaac_CUSTOM1 (custom1), 
+
+  XIsaac_CUSTOM0 (custom0),
+  XIsaac_CUSTOM1 (custom1),
   // -----------------------
   Div_Ra_Rb (div, rem),
   DivU_Ra_Rb (divu, remu),
@@ -135,8 +159,10 @@ MicroactionMapping {
   Mul_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_MUL},
   MulH_Ra_Rb :   {uA_Decode, uA_OF_A, uA_OF_B, uA_MULH},
   // = XISAAC Microaction Mapping =
-  XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0},
-  XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1},
+  // XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0},
+  XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0_I, uA_CUSTOM0_O},
+  // XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1},
+  XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1_I, uA_CUSTOM1_O},
 
   // ------------------------------
   Div_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_DIV},
@@ -178,23 +204,23 @@ TraceValueMapping {
     rd  = "$bitfield{rd}"
   },
   // = XISAAC Trace Value Mapping =
-  XIsaac_CUSTOM0 : {     
+  XIsaac_CUSTOM0 : {
     rd = "$bitfield{rd}",
     rd_data = "$reg{$bitfield{rd}}",
-    
+
     rs1 = "$bitfield{rs1}",
     rs1_data = "$reg{$bitfield{rs1}}",
-    
+
     rs2 = "$bitfield{rs2}",
     rs2_data = "$reg{$bitfield{rs2}}"
   },
-  XIsaac_CUSTOM1 : {     
+  XIsaac_CUSTOM1 : {
     rd = "$bitfield{rd}",
     rd_data = "$reg{$bitfield{rd}}",
-    
+
     rs1 = "$bitfield{rs1}",
     rs1_data = "$reg{$bitfield{rs1}}",
-    
+
     rs2 = "$bitfield{rs2}",
     rs2_data = "$reg{$bitfield{rs2}}"
   },

@@ -215,7 +215,7 @@ TraceValueMapping {
 
 /**************************************** Variants *****************************************/
 CorePerfModel CV32E40PXISAAC (
-  core : "RV32IMACFD"
+  core : "XIsaacCore"
   use Pipeline : CV32E40PXISAAC_pipeline
   use ConnectorModel : {regModel, staBranchPredModel}
 )
