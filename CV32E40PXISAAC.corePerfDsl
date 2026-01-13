@@ -20,13 +20,15 @@ Connector {Xa, Xb, Xd}
 
 Resource {PCGen, Decoder, JumpDecoder, ALU, LSU, CSR}
 Resource {MUL, MULH(5)}
+Resource {DIV(divider), DIVU(divider_u)}
+Resource {IPort_R, DPort_R, DPort_W}
+
 // = XISAAC Resources =
+// Variant: SOL0
 Resource {CUSTOM0(1)}
 Resource {CUSTOM1(1)}
 
 // --------------------
-Resource {DIV(divider), DIVU(divider_u)}
-Resource {IPort_R, DPort_R, DPort_W}
 
 Microaction {
   uA_IFetch        (Pc -> IPort_R),
@@ -42,16 +44,22 @@ Microaction {
   uA_LSU           (LSU),
   uA_MUL           (MUL -> Xd),
   uA_MULH          (MULH -> Xd),
-  // = XISAAC Microactions =
-    uA_CUSTOM0    (CUSTOM0 -> Xd),
-    uA_CUSTOM1    (CUSTOM1 -> Xd),
-
-  // -----------------------
   uA_DIV           (DIV -> Xd),
   uA_DIVU          (DIVU -> Xd),
   uA_Memory_R      (DPort_R -> Xd),
   uA_Memory_W      (DPort_W)
 }
+
+// = XISAAC Microactions =
+// Variant: SOL0
+Microaction {
+    
+    uA_CUSTOM0    (CUSTOM0 -> Xd),
+    
+    uA_CUSTOM1    (CUSTOM1 -> Xd)
+
+}
+// -----------------------
 
 /************************************ Stages & Pipeline ************************************/
 
@@ -66,6 +74,7 @@ Stage {
     uA_MUL,
     uA_MULH,
     // = XISAAC EX stage =
+    // Variant: SOL0
     uA_CUSTOM0,
     uA_CUSTOM1,
 
@@ -112,11 +121,6 @@ InstrGroup {
   Arith_X (auipc, lui),
   Mul_Ra_Rb (mul),
   MulH_Ra_Rb (mulh, mulhu, mulhsu),
-  // = XISAAC Instr Groups =
-  
-  XIsaac_CUSTOM0 (custom0),   
-  XIsaac_CUSTOM1 (custom1), 
-  // -----------------------
   Div_Ra_Rb (div, rem),
   DivU_Ra_Rb (divu, remu),
   Csr_Ra (csrrw, csrrs, csrrc),
@@ -127,6 +131,16 @@ InstrGroup {
   Default ([?])
 }
 
+// = XISAAC Instr Groups =
+InstrGroup {
+  
+  
+  XIsaac_CUSTOM0 (custom0),  
+  
+  XIsaac_CUSTOM1 (custom1)
+}
+// -----------------------
+
 MicroactionMapping {
   [ALL] :        {uA_IFetch, uA_PCGen},
   Arith_Ra_Rb :  {uA_Decode, uA_OF_A, uA_OF_B, uA_ALU_RegUpdate},
@@ -134,11 +148,6 @@ MicroactionMapping {
   Arith_X :      {uA_Decode, uA_ALU_RegUpdate},
   Mul_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_MUL},
   MulH_Ra_Rb :   {uA_Decode, uA_OF_A, uA_OF_B, uA_MULH},
-  // = XISAAC Microaction Mapping =
-  XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0},
-  XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1},
-
-  // ------------------------------
   Div_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_DIV},
   DivU_Ra_Rb :   {uA_Decode, uA_OF_A, uA_OF_B, uA_DIVU},
   Csr_Ra :       {uA_Decode, uA_OF_A, uA_CSR},
@@ -149,6 +158,17 @@ MicroactionMapping {
   jal :          {uA_JumpDecode, uA_ALU_RegUpdate},
   jalr :         {uA_JumpDecodeReg, uA_ALU_RegUpdate}
 }
+
+// = XISAAC Microaction Mapping =
+// Variant: SOL0
+MicroactionMapping {
+
+  XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0},
+
+  XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1}
+
+}
+// ------------------------------
 
 
 TraceValueMapping {
