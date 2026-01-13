@@ -1,7 +1,9 @@
 import ast
+import itertools
 import tempfile
 import argparse
 from pathlib import Path
+from collections import defaultdict
 from contextlib import contextmanager
 
 import yaml
@@ -9,7 +11,17 @@ import pandas as pd
 from mako.template import Template
 from mako.lookup import TemplateLookup
 
-# pd.set_option('display.max_columns', None)
+pd.set_option('display.max_columns', None)
+
+def get_permutations(d):
+    # return [
+    #     {k: v for k, v in zip(sorted(d.keys()), list_prod_value)}
+    #     for list_prod_value in itertools.product(*(d[k] for k in sorted(d.keys())))
+    # ]
+    return [
+        tuple((k, v) for k, v in zip(sorted(d.keys()), list_prod_value))
+        for list_prod_value in itertools.product(*(d[k] for k in sorted(d.keys())))
+    ]
 
 def main():
     parser = argparse.ArgumentParser()
@@ -17,6 +29,7 @@ def main():
     parser.add_argument("-o", "--output", default=None, help="Output .core_perf_dsl file path")
     parser.add_argument("-c", "--core", required=True, choices=["cv32e40p", "cva6"], help="Base core")
     parser.add_argument("--temp-dir", default=None, help="Optional path to persistent temp dir")
+    parser.add_argument("--hls-dir", default=None, help="Path to hls output dir")
     parser.add_argument("--hls-schedules", default=None, help="Path to hls_schedules.csv")
     parser.add_argument("--hls-yaml", default=None, help="Path to ISAX_XIsaac.yaml")
     parser.add_argument("--selected-solutions", default=None, help="Path to selected_solutions.yaml")
@@ -36,7 +49,8 @@ def main():
                 yield Path(tmpdirname)
 
     template_dirs = [".", "templates/"]
-    lookup_dirs = []
+    lookup_dirs = defaultdict(list)
+    lookup_dirs2 = []
     with temp_dir_content() as temp_dir:
         # print("temp_dir", temp_dir)
         temp_dir.mkdir(exist_ok=True)
@@ -50,102 +64,201 @@ def main():
                 index_data = yaml.safe_load(f)
             # print("index_data", index_data)
             candidates_data = index_data["candidates"]
+            if args.hls_schedules is None:
+                assert args.hls_dir is not None
+                hls_schedules = Path(args.hls_dir) / ".." / "hls_schedules.csv"
+            else:
+                hls_schedules = Path(args.hls_schedules)
+            assert hls_schedules.is_file(), f"Missing: {hls_schedules}"
+            hls_schedules_df = pd.read_csv(hls_schedules)
+            drop_fallback_schedules = True
+            if drop_fallback_schedules:
+                hls_schedules_df = hls_schedules_df[~hls_schedules_df["Fallback"]]
+            print("hls_schedules_df", hls_schedules_df)
+            # input("123")
             assert args.selected_solutions is not None
-            with open(args.selected_solutions) as f:
-                selected_solutions = yaml.safe_load(f)
-                # print("selected_solutions", selected_solutions)
-            assert args.hls_yaml is not None
-            with open(args.hls_yaml) as f:
-                hls_data = yaml.safe_load(f)
-                # print("hls_data", hls_data)
-            assert args.hls_schedules is not None
-            hls_schedules_df = pd.read_csv(args.hls_schedules)
-            # print("hls_schedules_df", hls_schedules_df)
-            def apply_selection(hls_schedules_df, selected_solutions):
-                configs = [f"SG_{x['sharing_group']}_SOL_IDX_{x['solution_idx']}" for x in selected_solutions]
-                # print("configs", configs)
-                hls_schedules_df_ = hls_schedules_df[hls_schedules_df["config"].isin(configs)]
-                return hls_schedules_df_
-            hls_schedules_df = apply_selection(hls_schedules_df, selected_solutions)
-            # print("hls_schedules_df_", hls_schedules_df)
-            instr_latencies = {}
-            for _, row in hls_schedules_df.iterrows():
-                lats = row["Instruction latencies"]
-                lats = ast.literal_eval(lats)
-                # print("lats", lats, type(lats))
-                assert len(lats) == 1, "Multi-instr sharing groups are unsupported!"
-                for instr_name, lat in lats.items():
-                    lat_ = lat
-                    instr_latencies[instr_name] = lat_
-            instr_latencies2 = {}
-            # print("instr_latencies", instr_latencies)
-            for instr_data in hls_data:
-                if "instruction" not in instr_data:
-                    break
-                instr_name = instr_data["instruction"]
-                schedule = instr_data["schedule"]
-                stage_nums = [x["stage"] for x in schedule]
-                min_stage, max_stage = min(stage_nums), max(stage_nums)
-                assert instr_latencies[instr_name] == (max_stage + 1)
-                lat = max_stage - min_stage
-                lat = max(1, lat)
-                instr_latencies2[instr_name] = lat
-            # print("instr_latencies2", instr_latencies2)
-
+            variants = {}
+            if hls_schedules_df is not None:
+                hls_schedules_df["SG"] = hls_schedules_df["config"].apply(lambda x: int(x.split("_")[1]))
+            if args.selected_solutions == "all":
+                print("A", hls_schedules_df)
+                sg_sols = defaultdict(list)
+                for _, row in hls_schedules_df.iterrows():
+                    sg = row["SG"]
+                    idx = row["idx"]
+                    sg_sols[sg].append(idx)
+                print("sg_sols", sg_sols)
+                perms = get_permutations(sg_sols)
+                print("perms", perms)
+                for i, perm in enumerate(perms):
+                    selected = []
+                    for perm_ in perm:
+                        sg, idx = perm_
+                        new = {"sharing_group": sg, "solution_idx": idx}
+                        selected.append(new)
+                    variant_name = f"SOL{i}"
+                    variant = (selected)
+                    variants[variant_name] = variant
+            else:
+                if args.selected_solutions is None:
+                    assert args.hls_dir is not None
+                    selected_solutions_yaml = Path(args.hls_dir) / "selected_solutions.yaml"
+                else:
+                    selected_solutions_yaml = Path(args.selected_solutions_yaml)
+                assert selected_solutions_yaml.is_file(), f"Missing: {selected_solutions_yaml}"
+                with open(selected_solutions_yaml) as f:
+                    selected_solutions = yaml.safe_load(f)
+                    # print("selected_solutions", selected_solutions)
+                # single variant
+                variant = (selected_solutions,)
+                variants[None] = variant
+            print("variants", variants)
             # input("!")
-            instr_operands_map = {}
-            instrs_timing = {}
-            for candidate_data in candidates_data:
-                candidate_properties = candidate_data["properties"]
-                instr_name = candidate_properties["InstrName"]
-                # print("instr_name", instr_name)
-                operand_names = candidate_properties["OperandNames"]
-                # print("operand_names", operand_names)
-                operand_types = candidate_properties["OperandTypes"]
-                # print("operand_types", operand_types)
-                operand_dirs = candidate_properties["OperandDirs"]
-                # print("operand_dirs", operand_dirs)
-                operands_map = {}
-                for i, operand_name in enumerate(operand_names):
-                    operand_type = operand_types[i]
-                    operand_dir = operand_dirs[i]
-                    assert operand_dir != "INOUT", "INOUT regs not supported!"
-                    if operand_type == "REG":
-                        assert operand_name in ["rd", "rs1", "rs2"], f"Unsupported operand name: {operand_name}"
-                    operand_field = operand_name
-                    operands_map[operand_name] = (operand_field, operand_type, operand_dir)
-                instr_operands_map[instr_name] = operands_map
-                instr_cycles = instr_latencies2[instr_name]
-                instr_timing = (instr_cycles,)
-                instrs_timing[instr_name] = instr_timing
-            instr_names = list(instr_operands_map.keys())
-            lookup_dirs.append(temp_dir)
-            cores_parts_map = {
-                "cv32e40p": {
-                    "cv32e40p_xisaac_ex_stages.part": "cv32e40p_xisaac_ex_stages.mako",
-                    "cv32e40p_xisaac_instr_groups.part": "cv32e40p_xisaac_instr_groups.mako",
-                    "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping.mako",
-                    "cv32e40p_xisaac_microactions.part": "cv32e40p_xisaac_microactions.mako",
-                    "cv32e40p_xisaac_resources.part": "cv32e40p_xisaac_resources.mako",
-                    "cv32e40p_xisaac_trace_value_mapping.part": "cv32e40p_xisaac_trace_value_mapping.mako",
-                },
-            }
-            core_parts_map = cores_parts_map.get(args.core)
-            assert core_parts_map is not None, f"Parts not found for core '{args.core}'"
-            for part_file, part_tmpl in core_parts_map.items():
-                # print("part_file", part_file)
-                # print("part_tmpl", part_tmpl)
-                mylookup = TemplateLookup(directories=template_dirs)
-                part_template = Template(filename=f"templates/{part_tmpl}", lookup=mylookup)
-                part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing)
-                part_dest = temp_dir / part_file
-                with open(part_dest, "w") as f:
-                    f.write(part_content)
+            sg2instrs = defaultdict(list)
+            for variant_name, variant in variants.items():
+                print("variant", variant)
+                selected_solutions = variant
+                if args.hls_yaml is None:
+                    assert args.hls_dir is not None
+                    hls_yaml = Path(args.hls_dir) / "ISAX_XIsaac.yaml"
+                else:
+                    hls_yaml = Path(args.hls_yaml)
+                assert hls_yaml.is_file(), f"Missing: {hls_yaml}"
+                with open(hls_yaml) as f:
+                    hls_data = yaml.safe_load(f)
+                    # print("hls_data", hls_data)
+                def apply_selection(hls_schedules_df, selected_solutions):
+                    configs = [f"SG_{x['sharing_group']}_SOL_IDX_{x['solution_idx']}" for x in selected_solutions]
+                    # print("configs", configs)
+                    hls_schedules_df_ = hls_schedules_df[hls_schedules_df["config"].isin(configs)]
+                    return hls_schedules_df_
+                hls_schedules_df = apply_selection(hls_schedules_df, selected_solutions)
+                # print("hls_schedules_df_", hls_schedules_df)
+                instr_latencies = {}
+                for _, row in hls_schedules_df.iterrows():
+                    lats = row["Instruction latencies"]
+                    grp = row["SG"]
+                    if lats in ["None", None]:
+                        instr_names = ["unknown"]  # TODO
+                        assert "Overall latency" in row
+                        default_lat = row["Overall latency"]
+                        lats = {}
+                        for instr_name in instr_names:
+                            lats[instr_name] = default_lat
+                    else:
+                        lats = ast.literal_eval(lats)
+                        # print("lats", lats, type(lats))
+                        assert len(lats) == 1, "Multi-instr sharing groups are unsupported!"
+                    for instr_name, lat in lats.items():
+                        sg2instrs[grp].append(instr_name)
+                        lat_ = lat
+                        instr_latencies[instr_name] = lat_
+                instr_latencies2 = {}
+                print("sg2instrs", sg2instrs)
+                # print("instr_latencies", instr_latencies)
+                for instr_data in hls_data:
+                    if "instruction" not in instr_data:
+                        break
+                    instr_name = instr_data["instruction"]
+                    schedule = instr_data["schedule"]
+                    stage_nums = [x["stage"] for x in schedule]
+                    min_stage, max_stage = min(stage_nums), max(stage_nums)
+                    print("instr_latencies", instr_latencies)
+                    assert instr_latencies[instr_name] == (max_stage + 1)
+                    lat = max_stage - min_stage
+                    lat = max(1, lat)
+                    instr_latencies2[instr_name] = lat
+                # print("instr_latencies2", instr_latencies2)
 
+                # input("!")
+                instr_operands_map = {}
+                instrs_timing = {}
+                for candidate_data in candidates_data:
+                    candidate_properties = candidate_data["properties"]
+                    instr_name = candidate_properties["InstrName"]
+                    # print("instr_name", instr_name)
+                    operand_names = candidate_properties["OperandNames"]
+                    # print("operand_names", operand_names)
+                    operand_types = candidate_properties["OperandTypes"]
+                    # print("operand_types", operand_types)
+                    operand_dirs = candidate_properties["OperandDirs"]
+                    # print("operand_dirs", operand_dirs)
+                    operands_map = {}
+                    for i, operand_name in enumerate(operand_names):
+                        operand_type = operand_types[i]
+                        operand_dir = operand_dirs[i]
+                        assert operand_dir != "INOUT", "INOUT regs not supported!"
+                        if operand_type == "REG":
+                            assert operand_name in ["rd", "rs1", "rs2"], f"Unsupported operand name: {operand_name}"
+                        operand_field = operand_name
+                        operands_map[operand_name] = (operand_field, operand_type, operand_dir)
+                    instr_operands_map[instr_name] = operands_map
+                    instr_cycles = instr_latencies2[instr_name]
+                    instr_timing = (instr_cycles,)
+                    instrs_timing[instr_name] = instr_timing
+                instr_names = list(instr_operands_map.keys())
+                # if variant_name is not None:
+                #     dest_dir = temp_dir / variant_name
+                #     dest_dir.mkdir(exist_ok=True)
+                # else:
+                #     dest_dir = temp_dir
+                dest_dir = temp_dir
+                lookup_dirs[variant_name].append(dest_dir)
+                lookup_dirs2.append(temp_dir)
+                cores_parts_map = {
+                    "cv32e40p": {
+                        "cv32e40p_xisaac_ex_stages.part": f"cv32e40p_xisaac_ex_stages.mako",
+                        "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping.mako",
+                        "cv32e40p_xisaac_microactions.part": "cv32e40p_xisaac_microactions.mako",
+                        "cv32e40p_xisaac_resources.part": "cv32e40p_xisaac_resources.mako",
+                    },
+                }
+                cores_parts_map2 = {
+                    "cv32e40p": {
+                        "cv32e40p_xisaac_instr_groups.part": "cv32e40p_xisaac_instr_groups.mako",
+                        "cv32e40p_xisaac_trace_value_mapping.part": "cv32e40p_xisaac_trace_value_mapping.mako",
+                    },
+                }
+                core_parts_map = cores_parts_map.get(args.core)
+                core_parts_map2 = cores_parts_map2.get(args.core)
+                assert core_parts_map is not None, f"Parts not found for core '{args.core}'"
+                assert core_parts_map2 is not None, f"Parts not found for core '{args.core}'"
+                for part_file, part_tmpl in core_parts_map.items():
+                    mylookup = TemplateLookup(directories=template_dirs)
+                    part_template = Template(filename=f"templates/{part_tmpl}", lookup=mylookup)
+                    part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing, sg2instrs=sg2instrs)
+                    subdir = dest_dir / variant_name
+                    subdir.mkdir(exist_ok=True)
+                    part_dest = subdir / part_file
+                    with open(part_dest, "w") as f:
+                        f.write(part_content)
+                for part_file, part_tmpl in core_parts_map2.items():
+                    mylookup = TemplateLookup(directories=template_dirs)
+                    part_template = Template(filename=f"templates/{part_tmpl}", lookup=mylookup)
+                    part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing, sg2instrs=sg2instrs)
+                    subdir = dest_dir
+                    part_dest = subdir / part_file
+                    with open(part_dest, "w") as f:
+                        f.write(part_content)
+
+        all_content = ""
+        print("lookup_dirs", lookup_dirs)
+        print("lookup_dirs2", lookup_dirs2)
+        print("template_dirs", template_dirs)
         if not args.parts_only:
-            mylookup = TemplateLookup(directories=template_dirs + lookup_dirs)
-            mytemplate = Template(filename=args.template, lookup=mylookup)
-            content = mytemplate.render()
+            # for variant_name, variant in variants.items():
+            if True:
+                # mylookup = TemplateLookup(directories=template_dirs + lookup_dirs[variant_name])
+                mylookup = TemplateLookup(directories=template_dirs + lookup_dirs2)
+                mytemplate = Template(filename=args.template, lookup=mylookup)
+                content = mytemplate.render(variants=variants)
+                # if variant_name is not None:
+                #     header = f"// Variant: {variant_name}\n"
+                # else:
+                #     header = "// Default Variant\n"
+                # all_content += header
+                # all_content += content
+                # content = all_content
 
     if args.output is None:
         print(content)

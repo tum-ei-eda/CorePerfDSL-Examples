@@ -20,11 +20,15 @@ Connector {Xa, Xb, Xd}
 
 Resource {PCGen, Decoder, JumpDecoder, ALU, LSU, CSR}
 Resource {MUL, MULH(5)}
-// = XISAAC Resources =
-<%include file="cv32e40p_xisaac_resources.part"/>
-// --------------------
 Resource {DIV(divider), DIVU(divider_u)}
 Resource {IPort_R, DPort_R, DPort_W}
+
+// = XISAAC Resources =
+% for variant_name in variants:
+// Variant: ${variant_name}
+<%include file="${variant_name}/cv32e40p_xisaac_resources.part"/>
+% endfor
+// --------------------
 
 Microaction {
   uA_IFetch        (Pc -> IPort_R),
@@ -40,14 +44,20 @@ Microaction {
   uA_LSU           (LSU),
   uA_MUL           (MUL -> Xd),
   uA_MULH          (MULH -> Xd),
-  // = XISAAC Microactions =
-<%include file="cv32e40p_xisaac_microactions.part"/>
-  // -----------------------
   uA_DIV           (DIV -> Xd),
   uA_DIVU          (DIVU -> Xd),
   uA_Memory_R      (DPort_R -> Xd),
   uA_Memory_W      (DPort_W)
 }
+
+// = XISAAC Microactions =
+% for variant_name in variants:
+// Variant: ${variant_name}
+Microaction {
+<%include file="${variant_name}/cv32e40p_xisaac_microactions.part"/>
+}
+% endfor
+// -----------------------
 
 /************************************ Stages & Pipeline ************************************/
 
@@ -62,7 +72,10 @@ Stage {
     uA_MUL,
     uA_MULH,
     // = XISAAC EX stage =
-<%include file="cv32e40p_xisaac_ex_stages.part"/>
+% for variant_name in variants:
+    // Variant: ${variant_name}
+<%include file="${variant_name}/cv32e40p_xisaac_ex_stages.part"/>
+% endfor
     // -------------------
     uA_DIV,
     uA_DIVU
@@ -106,9 +119,6 @@ InstrGroup {
   Arith_X (auipc, lui),
   Mul_Ra_Rb (mul),
   MulH_Ra_Rb (mulh, mulhu, mulhsu),
-  // = XISAAC Instr Groups =
-<%include file="cv32e40p_xisaac_instr_groups.part"/>
-  // -----------------------
   Div_Ra_Rb (div, rem),
   DivU_Ra_Rb (divu, remu),
   Csr_Ra (csrrw, csrrs, csrrc),
@@ -119,6 +129,12 @@ InstrGroup {
   Default ([?])
 }
 
+// = XISAAC Instr Groups =
+InstrGroup {
+<%include file="cv32e40p_xisaac_instr_groups.part"/>
+}
+// -----------------------
+
 MicroactionMapping {
   [ALL] :        {uA_IFetch, uA_PCGen},
   Arith_Ra_Rb :  {uA_Decode, uA_OF_A, uA_OF_B, uA_ALU_RegUpdate},
@@ -126,9 +142,6 @@ MicroactionMapping {
   Arith_X :      {uA_Decode, uA_ALU_RegUpdate},
   Mul_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_MUL},
   MulH_Ra_Rb :   {uA_Decode, uA_OF_A, uA_OF_B, uA_MULH},
-  // = XISAAC Microaction Mapping =
-<%include file="cv32e40p_xisaac_microaction_mapping.part"/>
-  // ------------------------------
   Div_Ra_Rb :    {uA_Decode, uA_OF_A, uA_OF_B, uA_DIV},
   DivU_Ra_Rb :   {uA_Decode, uA_OF_A, uA_OF_B, uA_DIVU},
   Csr_Ra :       {uA_Decode, uA_OF_A, uA_CSR},
@@ -139,6 +152,15 @@ MicroactionMapping {
   jal :          {uA_JumpDecode, uA_ALU_RegUpdate},
   jalr :         {uA_JumpDecodeReg, uA_ALU_RegUpdate}
 }
+
+// = XISAAC Microaction Mapping =
+% for variant_name in variants:
+// Variant: ${variant_name}
+MicroactionMapping {
+<%include file="${variant_name}/cv32e40p_xisaac_microaction_mapping.part"/>
+}
+% endfor
+// ------------------------------
 
 
 TraceValueMapping {
