@@ -27,6 +27,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--template", default=None, required=True, help="Base MAKO Template")
     parser.add_argument("-o", "--output", default=None, help="Output .core_perf_dsl file path")
+    parser.add_argument("--monitor-template", default=None, help="Mako template for monitor description")
+    parser.add_argument("--monitor-dest", default=None, help="Directory containing generated Monitor descriptions")
+    parser.add_argument("--ini-dest", default=None, help="Directory containing generated INI files (and mako templates)")
     parser.add_argument("-c", "--core", required=True, choices=["cv32e40p", "cva6"], help="Base core")
     parser.add_argument("--temp-dir", default=None, help="Optional path to persistent temp dir")
     parser.add_argument("--hls-dir", default=None, help="Path to hls output dir")
@@ -37,6 +40,7 @@ def main():
     parser.add_argument("--parts-only", action="store_true", help="Only generate parts")
     parser.add_argument("--render-only", action="store_true", help="Only render final output")
     args = parser.parse_args()
+    core_name = "XIsaacCore"
 
 
 
@@ -51,6 +55,7 @@ def main():
     template_dirs = [".", "templates/"]
     lookup_dirs = defaultdict(list)
     lookup_dirs2 = []
+    xlen = None
     with temp_dir_content() as temp_dir:
         # print("temp_dir", temp_dir)
         temp_dir.mkdir(exist_ok=True)
@@ -64,6 +69,12 @@ def main():
                 index_data = yaml.safe_load(f)
             # print("index_data", index_data)
             candidates_data = index_data["candidates"]
+            global_data = index_data["global"]
+            global_properties = global_data["properties"]
+            if isinstance(global_properties, list):
+                assert len(global_properties) > 0
+                global_properties = global_properties[0]
+            xlen = global_properties["xlen"]
             if args.hls_schedules is None:
                 assert args.hls_dir is not None
                 hls_schedules = Path(args.hls_dir) / ".." / "hls_schedules.csv"
@@ -259,6 +270,41 @@ def main():
                 # all_content += header
                 # all_content += content
                 # content = all_content
+
+    monitor_name = None
+    if args.monitor_dest:
+        assert args.monitor_template
+        monitor_template = Path(args.monitor_template)
+        assert monitor_template.is_file()
+        monitor_dest = Path(args.monitor_dest)
+        assert xlen is not None
+        mylookup = TemplateLookup(directories=template_dirs)
+        mytemplate = Template(filename=str(monitor_template), lookup=mylookup)
+        monitor_name = monitor_dest.stem
+        monitor_content = mytemplate.render(xlen=xlen, instr_operands_map=instr_operands_map, monitor_name=monitor_name, core_name=core_name)
+        # print("sg2instrs", sg2instrs)
+        # print("instr_operands_map", instr_operands_map)
+        with open(monitor_dest, "w") as f:
+            f.write(monitor_content)
+    if args.ini_dest:
+        assert monitor_name
+        uarch = "CV32E40PXISAAC"
+        # instr_trace = "InstructionTrace_RV64IMF_Zicsr"
+        instr_trace = monitor_name
+        ini_content = f"""
+[StringConfigurations]
+arch.cpu={core_name}
+
+[Plugin PerformanceEstimatorPlugin]
+plugin.perfEst.uArch={uarch}
+plugin.tracePrinter.trace={instr_trace}
+"""
+        ini_dir = Path(args.ini_dest)
+        assert ini_dir.is_dir(), f"Not a directory: {ini_dir}"
+        uarch_lower = uarch.lower()
+        ini_file = Path(ini_dir) / f"{uarch_lower}.ini"
+        with open(ini_file, "w") as f:
+            f.write(ini_content)
 
     if args.output is None:
         print(content)
