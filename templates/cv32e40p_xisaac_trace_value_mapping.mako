@@ -1,7 +1,7 @@
 % for instr_name, instr_operands in instr_operands_map.items():
 <%
 i = 0
-reg_operands = list(filter(lambda x, x[1] == "REG"), instr_operands)
+reg_operands = list(filter(lambda x: x[1] == "REG", instr_operands))
 %>\
   XIsaac_${instr_name} : { \
     % for operand_name, data in reg_operands.items():
