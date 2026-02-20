@@ -12,6 +12,7 @@ uA_Decode, \
 operand_field, operand_type, operand_dir = data
 %>\
 % if operand_dir == "IN":
+% if operand_type == "REG":
 % if operand_name == "rs1":
 uA_OF_A, \
 % elif operand_name == "rs2":
@@ -20,6 +21,7 @@ uA_OF_B, \
 <%
 raise ValueError(f"Unsupported operand: {operand_name}")
 %>
+% endif
 % endif
 % endif
 % endfor
