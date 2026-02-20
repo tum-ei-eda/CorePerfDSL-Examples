@@ -14,6 +14,7 @@
 	{"name": "jump_pc"},
 	{"name": "csr"},
 	{"name": "csr_reg"},
+<%include file="monitor_trace_values.mako"/>
 	{"name": "mem_addr"}
     ],
 
