@@ -182,12 +182,14 @@ def main():
                     min_stage, max_stage = min(stage_nums), max(stage_nums)
                     print("instr_latencies", instr_latencies)
                     # assert instr_latencies[instr_name] == (max_stage + 1)  # TODO: fix
-                    lat = max_stage - min_stage
+                    lat = max_stage - min_stage + 1
+                    print("lat", lat)
                     lat = max(1, lat)
+                    print("lat_", lat)
                     instr_latencies2[instr_name] = lat
-                # print("instr_latencies2", instr_latencies2)
+                print("instr_latencies2", instr_latencies2)
 
-                # input("!")
+                input("!")
                 instr_operands_map = {}
                 instrs_timing = {}
                 for candidate_data in candidates_data:
