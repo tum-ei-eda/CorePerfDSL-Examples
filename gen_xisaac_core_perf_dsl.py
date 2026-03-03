@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--monitor-template", default=None, help="Mako template for monitor description")
     parser.add_argument("--monitor-dest", default=None, help="Directory containing generated Monitor descriptions")
     parser.add_argument("--ini-dest", default=None, help="Directory containing generated INI files (and mako templates)")
+    parser.add_argument("--uarchs-dest", default=None, help="Output CSV file for uarch names")
     parser.add_argument("-c", "--core", required=True, choices=["cv32e40p", "cva6"], help="Base core")
     parser.add_argument("--temp-dir", default=None, help="Optional path to persistent temp dir")
     parser.add_argument("--hls-dir", default=None, help="Path to hls output dir")
@@ -296,28 +297,57 @@ def main():
         # print("instr_operands_map", instr_operands_map)
         with open(monitor_dest, "w") as f:
             f.write(monitor_content)
-    if args.ini_dest:
+    if args.uarchs_dest:
         assert variants is not None
-        assert monitor_name
+        uarchs_data = []
         for variant_name in variants:
             variant_suffix = variant_name if variant_name is not None else ""
             uarch = f"CV32E40PXISAAC{variant_suffix}"
             uarch_lower = uarch.lower()
-            # instr_trace = "InstructionTrace_RV64IMF_Zicsr"
-            instr_trace = monitor_name
-            ini_content = f"""
+            new = {"uarch": uarch, "uarch_lower": uarch_lower, "variant": variant_name}
+            uarchs_data.append(new)
+
+        uarchs_df = pd.DataFrame(uarchs_data)
+        print("uarch_df")
+        print(uarchs_df)
+        uarchs_df.to_csv(args.uarchs_dest)
+
+
+    if args.ini_dest:
+        assert variants is not None
+        assert monitor_name
+        trace_modes = [False, True]
+        for variant_name in variants:
+            for trace_mode in trace_modes:
+                variant_suffix = variant_name if variant_name is not None else ""
+                uarch = f"CV32E40PXISAAC{variant_suffix}"
+                uarch_lower = uarch.lower()
+                # instr_trace = "InstructionTrace_RV64IMF_Zicsr"
+                instr_trace = monitor_name
+                ini_content = f"""
 [StringConfigurations]
 arch.cpu={core_name}
 
 [Plugin PerformanceEstimatorPlugin]
 plugin.perfEst.uArch={uarch}
-plugin.tracePrinter.trace={instr_trace}
 """
-            ini_dir = Path(args.ini_dest)
-            assert ini_dir.is_dir(), f"Not a directory: {ini_dir}"
-            ini_file = Path(ini_dir) / f"{uarch_lower}.ini"
-            with open(ini_file, "w") as f:
-                f.write(ini_content)
+                ini_dir = Path(args.ini_dest)
+                assert ini_dir.is_dir(), f"Not a directory: {ini_dir}"
+                if trace_mode:
+                    ini_content += f"""plugin.perfEst.print=1
+plugin.perfEst.printDir=.
+
+[Plugin TracePrinterPlugin]
+plugin.tracePrinter.trace={instr_trace}
+plugin.tracePrinter.stream.toFile=1
+plugin.tracePrinter.stream.outDir=.
+plugin.tracePrinter.stream.fileName=instr_trace
+"""
+                    ini_file = Path(ini_dir) / f"{uarch_lower}_trace.ini"
+                else:
+                    ini_file = Path(ini_dir) / f"{uarch_lower}.ini"
+                with open(ini_file, "w") as f:
+                    f.write(ini_content)
 
     if args.output is None:
         print(content)
