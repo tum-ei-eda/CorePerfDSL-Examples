@@ -14,9 +14,10 @@
 	{"name": "jump_pc"},
 	{"name": "csr"},
 	{"name": "csr_reg"},
-            {"name": "rs2"},
-            {"name": "rd"},
             {"name": "rs1"},
+            {"name": "rs2"},
+            {"name": "uimm5"},
+            {"name": "rd"},
 
 	{"name": "mem_addr"}
     ],
@@ -62,8 +63,20 @@
 	     {"traceValue": "rd_data", "description": "$reg{$bitfield{rd}}", "position": "post"}
 	 ]
 	},
-   {"name": "CUSTOM0_Type",
-    "instructions": [{"name": "CUSTOM0"}],
+   {"name": "CUSTOM6_Type",
+    "instructions": [{"name": "CUSTOM6"}],
+    "mappings": [
+        {"traceValue": "code", "description": "$code"},
+        {"traceValue": "pc", "description": "$pc"},
+        {"traceValue": "assembly", "description": "$asm"},
+            {"traceValue": "rd_data", "description": "$reg{$bitfield{rd}}"},
+            {"traceValue": "rs1_data", "description": "$reg{$bitfield{rs1}}"},
+            {"traceValue": "rs2_data", "description": "$reg{$bitfield{rs2}}"},
+            {"traceValue": "uimm5", "description": "$bitfield{uimm5}"}
+    ]
+  },
+   {"name": "CUSTOM7_Type",
+    "instructions": [{"name": "CUSTOM7"}],
     "mappings": [
         {"traceValue": "code", "description": "$code"},
         {"traceValue": "pc", "description": "$pc"},
@@ -73,15 +86,16 @@
             {"traceValue": "rs2_data", "description": "$reg{$bitfield{rs2}}"}
     ]
   },
-   {"name": "CUSTOM1_Type",
-    "instructions": [{"name": "CUSTOM1"}],
+   {"name": "CUSTOM16_Type",
+    "instructions": [{"name": "CUSTOM16"}],
     "mappings": [
         {"traceValue": "code", "description": "$code"},
         {"traceValue": "pc", "description": "$pc"},
         {"traceValue": "assembly", "description": "$asm"},
             {"traceValue": "rd_data", "description": "$reg{$bitfield{rd}}"},
             {"traceValue": "rs1_data", "description": "$reg{$bitfield{rs1}}"},
-            {"traceValue": "rs2_data", "description": "$reg{$bitfield{rs2}}"}
+            {"traceValue": "rs2_data", "description": "$reg{$bitfield{rs2}}"},
+            {"traceValue": "uimm5", "description": "$bitfield{uimm5}"}
     ]
   },
 

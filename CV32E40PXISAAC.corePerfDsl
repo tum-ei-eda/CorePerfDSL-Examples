@@ -24,9 +24,21 @@ Resource {DIV(divider), DIVU(divider_u)}
 Resource {IPort_R, DPort_R, DPort_W}
 
 // = XISAAC Resources =
-// Variant: SOL0
-Resource {CUSTOM0(1)}
-Resource {CUSTOM1(1)}
+virtual Resource {
+    vCUSTOM6,
+    vCUSTOM7,
+    vCUSTOM16
+}
+
+// Variant: V0
+Resource {V0_CUSTOM6(2)}
+Resource {V0_CUSTOM7(2)}
+Resource {V0_CUSTOM16(2)}
+
+// Variant: V52
+Resource {V52_CUSTOM6(4)}
+Resource {V52_CUSTOM7(3)}
+Resource {V52_CUSTOM16(3)}
 
 // --------------------
 
@@ -51,12 +63,24 @@ Microaction {
 }
 
 // = XISAAC Microactions =
-// Variant: SOL0
+virtual Microaction {
+    vuA_CUSTOM6,
+    vuA_CUSTOM7,
+    vuA_CUSTOM16
+
+}
+// Variant: V0
 Microaction {
-    
-    uA_CUSTOM0    (CUSTOM0 -> Xd),
-    
-    uA_CUSTOM1    (CUSTOM1 -> Xd)
+    uA_V0_CUSTOM6    (V0_CUSTOM6 -> Xd),
+    uA_V0_CUSTOM7    (V0_CUSTOM7 -> Xd),
+    uA_V0_CUSTOM16    (V0_CUSTOM16 -> Xd)
+
+}
+// Variant: V52
+Microaction {
+    uA_V52_CUSTOM6    (V52_CUSTOM6 -> Xd),
+    uA_V52_CUSTOM7    (V52_CUSTOM7 -> Xd),
+    uA_V52_CUSTOM16    (V52_CUSTOM16 -> Xd)
 
 }
 // -----------------------
@@ -74,9 +98,9 @@ Stage {
     uA_MUL,
     uA_MULH,
     // = XISAAC EX stage =
-    // Variant: SOL0
-    uA_CUSTOM0,
-    uA_CUSTOM1,
+    vuA_CUSTOM6,
+    vuA_CUSTOM7,
+    vuA_CUSTOM16,
 
     // -------------------
     uA_DIV,
@@ -135,9 +159,11 @@ InstrGroup {
 InstrGroup {
   
   
-  XIsaac_CUSTOM0 (custom0),  
+  XIsaac_CUSTOM6 (custom6),  
   
-  XIsaac_CUSTOM1 (custom1)
+  XIsaac_CUSTOM7 (custom7),  
+  
+  XIsaac_CUSTOM16 (custom16)
 }
 // -----------------------
 
@@ -160,12 +186,13 @@ MicroactionMapping {
 }
 
 // = XISAAC Microaction Mapping =
-// Variant: SOL0
 MicroactionMapping {
 
-  XIsaac_CUSTOM0 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM0},
+  XIsaac_CUSTOM6 : {uA_Decode, uA_OF_A, uA_OF_B, vuA_CUSTOM6},
 
-  XIsaac_CUSTOM1 : {uA_Decode, uA_OF_A, uA_OF_B, uA_CUSTOM1}
+  XIsaac_CUSTOM7 : {uA_Decode, uA_OF_A, uA_OF_B, vuA_CUSTOM7},
+
+  XIsaac_CUSTOM16 : {uA_Decode, uA_OF_A, uA_OF_B, vuA_CUSTOM16}
 
 }
 // ------------------------------
@@ -198,7 +225,7 @@ TraceValueMapping {
     rd  = "$bitfield{rd}"
   },
   // = XISAAC Trace Value Mapping =
-  XIsaac_CUSTOM0 : {     
+  XIsaac_CUSTOM6 : {     
     rd = "$bitfield{rd}",
     rd_data = "$reg{$bitfield{rd}}",
     
@@ -208,7 +235,17 @@ TraceValueMapping {
     rs2 = "$bitfield{rs2}",
     rs2_data = "$reg{$bitfield{rs2}}"
   },
-  XIsaac_CUSTOM1 : {     
+  XIsaac_CUSTOM7 : {     
+    rd = "$bitfield{rd}",
+    rd_data = "$reg{$bitfield{rd}}",
+    
+    rs1 = "$bitfield{rs1}",
+    rs1_data = "$reg{$bitfield{rs1}}",
+    
+    rs2 = "$bitfield{rs2}",
+    rs2_data = "$reg{$bitfield{rs2}}"
+  },
+  XIsaac_CUSTOM16 : {     
     rd = "$bitfield{rd}",
     rd_data = "$reg{$bitfield{rd}}",
     
@@ -264,8 +301,42 @@ TraceValueMapping {
 }
 
 /**************************************** Variants *****************************************/
-CorePerfModel CV32E40PXISAAC (
+// Variant: V0
+
+CorePerfModel CV32E40PXISAACV0 (
   core : "XIsaacCore"
   use Pipeline : CV32E40PXISAAC_pipeline
   use ConnectorModel : {regModel, staBranchPredModel}
+  assign Resource : {
+    vCUSTOM6 = V0_CUSTOM6,
+    vCUSTOM7 = V0_CUSTOM7,
+    vCUSTOM16 = V0_CUSTOM16
+  }
+  assign Microaction : {
+    vuA_CUSTOM6 = uA_V0_CUSTOM6,
+    vuA_CUSTOM7 = uA_V0_CUSTOM7,
+    vuA_CUSTOM16 = uA_V0_CUSTOM16
+  }
 )
+
+
+// Variant: V52
+
+CorePerfModel CV32E40PXISAACV52 (
+  core : "XIsaacCore"
+  use Pipeline : CV32E40PXISAAC_pipeline
+  use ConnectorModel : {regModel, staBranchPredModel}
+  assign Resource : {
+    vCUSTOM6 = V52_CUSTOM6,
+    vCUSTOM7 = V52_CUSTOM7,
+    vCUSTOM16 = V52_CUSTOM16
+  }
+  assign Microaction : {
+    vuA_CUSTOM6 = uA_V52_CUSTOM6,
+    vuA_CUSTOM7 = uA_V52_CUSTOM7,
+    vuA_CUSTOM16 = uA_V52_CUSTOM16
+  }
+)
+
+
+// --------------------
