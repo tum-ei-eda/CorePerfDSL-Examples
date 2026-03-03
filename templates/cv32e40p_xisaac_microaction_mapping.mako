@@ -25,7 +25,7 @@ raise ValueError(f"Unsupported operand: {operand_name}")
 % endif
 % endif
 % endfor
-uA_${instr_name}\
+vuA_${instr_name}\
 % if i == len(instr_operands_map):
 }
 % else:

@@ -24,6 +24,7 @@ Resource {DIV(divider), DIVU(divider_u)}
 Resource {IPort_R, DPort_R, DPort_W}
 
 // = XISAAC Resources =
+<%include file="cv32e40p_xisaac_virtual_resources.part"/>
 % for variant_name in variants:
 // Variant: ${variant_name}
 <%include file="${variant_name}/cv32e40p_xisaac_resources.part"/>
@@ -51,6 +52,9 @@ Microaction {
 }
 
 // = XISAAC Microactions =
+virtual Microaction {
+<%include file="cv32e40p_xisaac_virtual_microactions.part"/>
+}
 % for variant_name in variants:
 // Variant: ${variant_name}
 Microaction {
@@ -72,10 +76,7 @@ Stage {
     uA_MUL,
     uA_MULH,
     // = XISAAC EX stage =
-% for variant_name in variants:
-    // Variant: ${variant_name}
-<%include file="${variant_name}/cv32e40p_xisaac_ex_stages.part"/>
-% endfor
+<%include file="cv32e40p_xisaac_ex_stages.part"/>
     // -------------------
     uA_DIV,
     uA_DIVU
@@ -154,12 +155,9 @@ MicroactionMapping {
 }
 
 // = XISAAC Microaction Mapping =
-% for variant_name in variants:
-// Variant: ${variant_name}
 MicroactionMapping {
-<%include file="${variant_name}/cv32e40p_xisaac_microaction_mapping.part"/>
+<%include file="cv32e40p_xisaac_microaction_mapping.part"/>
 }
-% endfor
 // ------------------------------
 
 
@@ -236,8 +234,8 @@ TraceValueMapping {
 }
 
 /**************************************** Variants *****************************************/
-CorePerfModel CV32E40PXISAAC (
-  core : "XIsaacCore"
-  use Pipeline : CV32E40PXISAAC_pipeline
-  use ConnectorModel : {regModel, staBranchPredModel}
-)
+% for variant_name in variants:
+// Variant: ${variant_name}
+<%include file="${variant_name}/cv32e40p_xisaac_model.part"/>
+% endfor
+// --------------------

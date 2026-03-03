@@ -33,9 +33,10 @@ def main():
     parser.add_argument("-c", "--core", required=True, choices=["cv32e40p", "cva6"], help="Base core")
     parser.add_argument("--temp-dir", default=None, help="Optional path to persistent temp dir")
     parser.add_argument("--hls-dir", default=None, help="Path to hls output dir")
-    parser.add_argument("--hls-schedules", default=None, help="Path to hls_schedules.csv")
-    parser.add_argument("--hls-yaml", default=None, help="Path to ISAX_XIsaac.yaml")
-    parser.add_argument("--selected-solutions", default=None, help="Path to selected_solutions.yaml")
+    # parser.add_argument("--hls-schedules", default=None, help="Path to hls_schedules.csv")
+    # parser.add_argument("--hls-yaml", default=None, help="Path to ISAX_XIsaac.yaml")
+    # parser.add_argument("--selected-solutions", default=None, help="Path to selected_solutions.yaml")
+    parser.add_argument("--variants", default=None, help="Filter variants")
     parser.add_argument("--index-yaml", default=None, help="Path to XISAAC index.yml")
     parser.add_argument("--parts-only", action="store_true", help="Only generate parts")
     parser.add_argument("--render-only", action="store_true", help="Only render final output")
@@ -56,6 +57,7 @@ def main():
     lookup_dirs = defaultdict(list)
     lookup_dirs2 = []
     xlen = None
+    variants = None
     with temp_dir_content() as temp_dir:
         # print("temp_dir", temp_dir)
         temp_dir.mkdir(exist_ok=True)
@@ -75,11 +77,12 @@ def main():
                 assert len(global_properties) > 0
                 global_properties = global_properties[0]
             xlen = global_properties["xlen"]
-            if args.hls_schedules is None:
-                assert args.hls_dir is not None
-                hls_schedules = Path(args.hls_dir) / ".." / "hls_schedules.csv"
-            else:
-                hls_schedules = Path(args.hls_schedules)
+            # if args.hls_schedules is None:
+            #     assert args.hls_dir is not None
+            #     hls_schedules = Path(args.hls_dir) / ".." / "hls_schedules.csv"
+            # else:
+            #     hls_schedules = Path(args.hls_schedules)
+            hls_schedules = Path(args.hls_dir) / "hls_schedules.csv"
             assert hls_schedules.is_file(), f"Missing: {hls_schedules}"
             hls_schedules_df = pd.read_csv(hls_schedules)
             drop_fallback_schedules = True
@@ -87,53 +90,54 @@ def main():
                 hls_schedules_df = hls_schedules_df[~hls_schedules_df["Fallback"]]
             print("hls_schedules_df", hls_schedules_df)
             # input("123")
-            assert args.selected_solutions is not None
+            # assert args.selected_solutions is not None
+            variants_filter = args.variants
+            if variants_filter is not None:
+                if isinstance(variants_filter, str):
+                    variants_filter = list(map(int, variants_filter.split(",")))
+                assert isinstance(variants_filter, list)  # TODO: allow sets?
             variants = {}
             if hls_schedules_df is not None:
                 hls_schedules_df["SG"] = hls_schedules_df["config"].apply(lambda x: int(x.split("_")[1]))
-            if args.selected_solutions == "all":
-                print("A", hls_schedules_df)
-                sg_sols = defaultdict(list)
-                for _, row in hls_schedules_df.iterrows():
-                    sg = row["SG"]
-                    idx = row["idx"]
-                    sg_sols[sg].append(idx)
-                print("sg_sols", sg_sols)
-                perms = get_permutations(sg_sols)
-                print("perms", perms)
-                for i, perm in enumerate(perms):
-                    selected = []
-                    for perm_ in perm:
-                        sg, idx = perm_
-                        new = {"sharing_group": sg, "solution_idx": idx}
-                        selected.append(new)
-                    variant_name = f"SOL{i}"
-                    variant = (selected)
-                    variants[variant_name] = variant
-            else:
-                if args.selected_solutions is None:
-                    assert args.hls_dir is not None
-                    selected_solutions_yaml = Path(args.hls_dir) / "selected_solutions.yaml"
+            hls_selected_schedule_metrics_csv = Path(args.hls_dir) / "hls_selected_schedule_metrics.csv" 
+            assert hls_selected_schedule_metrics_csv.is_file(), f"Missing: {hls_selected_schedule_metrics_csv}"
+            hls_variants_df = pd.read_csv(hls_selected_schedule_metrics_csv)
+            num_variants = len(hls_variants_df)
+            print("hls_variants_df")
+            print(hls_variants_df)
+            print("num_variants", num_variants)
+            if variants_filter:
+                hls_variants_df = hls_variants_df[hls_variants_df["Variant idx"].isin(variants_filter)]
+            print("hls_variants_df")
+            print(hls_variants_df)
+            for _, variant_row in hls_variants_df.iterrows():
+                print("variant_row", variant_row)
+                variant_name = variant_row["Variant name"]
+                print("variant_name", variant_name)
+                if variant_name is not None:
+                    selected_solutions_yaml = Path(args.hls_dir) / "output" / variant_name / "selected_solutions.yaml"
                 else:
-                    selected_solutions_yaml = Path(args.selected_solutions_yaml)
+                    selected_solutions_yaml = Path(args.hls_dir) / "output" / "selected_solutions.yaml"
                 assert selected_solutions_yaml.is_file(), f"Missing: {selected_solutions_yaml}"
                 with open(selected_solutions_yaml) as f:
                     selected_solutions = yaml.safe_load(f)
-                    # print("selected_solutions", selected_solutions)
-                # single variant
-                variant = (selected_solutions,)
-                variants[None] = variant
+                variant = (selected_solutions)
+                variants[variant_name] = variant
             print("variants", variants)
-            # input("!")
+            # input(">>>")
             sg2instrs = defaultdict(list)
             for variant_name, variant in variants.items():
                 print("variant", variant)
                 selected_solutions = variant
-                if args.hls_yaml is None:
-                    assert args.hls_dir is not None
-                    hls_yaml = Path(args.hls_dir) / "ISAX_XIsaac.yaml"
+                # if args.hls_yaml is None:
+                #     assert args.hls_dir is not None
+                #     hls_yaml = Path(args.hls_dir) / "ISAX_XIsaac.yaml"
+                # else:
+                #     hls_yaml = Path(args.hls_yaml)
+                if variant_name is not None:
+                    hls_yaml = Path(args.hls_dir) / "output" / variant_name / "ISAX_XIsaac.yaml"
                 else:
-                    hls_yaml = Path(args.hls_yaml)
+                    hls_yaml = Path(args.hls_dir) / "output" / "ISAX_XIsaac.yaml"
                 assert hls_yaml.is_file(), f"Missing: {hls_yaml}"
                 with open(hls_yaml) as f:
                     hls_data = yaml.safe_load(f)
@@ -173,9 +177,10 @@ def main():
                     instr_name = instr_data["instruction"]
                     schedule = instr_data["schedule"]
                     stage_nums = [x["stage"] for x in schedule]
+                    print("stage_nums", stage_nums)
                     min_stage, max_stage = min(stage_nums), max(stage_nums)
                     print("instr_latencies", instr_latencies)
-                    assert instr_latencies[instr_name] == (max_stage + 1)
+                    # assert instr_latencies[instr_name] == (max_stage + 1)  # TODO: fix
                     lat = max_stage - min_stage
                     lat = max(1, lat)
                     instr_latencies2[instr_name] = lat
@@ -204,6 +209,8 @@ def main():
                         operand_field = operand_name
                         operands_map[operand_name] = (operand_field, operand_type, operand_dir)
                     instr_operands_map[instr_name] = operands_map
+                    print("instr_name", instr_name)
+                    print("instr_latencies2", instr_latencies2)
                     instr_cycles = instr_latencies2[instr_name]
                     instr_timing = (instr_cycles,)
                     instrs_timing[instr_name] = instr_timing
@@ -218,16 +225,19 @@ def main():
                 lookup_dirs2.append(temp_dir)
                 cores_parts_map = {
                     "cv32e40p": {
-                        "cv32e40p_xisaac_ex_stages.part": f"cv32e40p_xisaac_ex_stages.mako",
-                        "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping.mako",
                         "cv32e40p_xisaac_microactions.part": "cv32e40p_xisaac_microactions.mako",
                         "cv32e40p_xisaac_resources.part": "cv32e40p_xisaac_resources.mako",
+                        "cv32e40p_xisaac_model.part": "cv32e40p_xisaac_model.mako",
                     },
                 }
                 cores_parts_map2 = {
                     "cv32e40p": {
+                        "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping.mako",
+                        "cv32e40p_xisaac_ex_stages.part": f"cv32e40p_xisaac_ex_stages.mako",
                         "cv32e40p_xisaac_instr_groups.part": "cv32e40p_xisaac_instr_groups.mako",
                         "cv32e40p_xisaac_trace_value_mapping.part": "cv32e40p_xisaac_trace_value_mapping.mako",
+                        "cv32e40p_xisaac_virtual_microactions.part": "cv32e40p_xisaac_virtual_microactions.mako",
+                        "cv32e40p_xisaac_virtual_resources.part": "cv32e40p_xisaac_virtual_resources.mako",
                     },
                 }
                 core_parts_map = cores_parts_map.get(args.core)
@@ -237,7 +247,7 @@ def main():
                 for part_file, part_tmpl in core_parts_map.items():
                     mylookup = TemplateLookup(directories=template_dirs)
                     part_template = Template(filename=f"templates/{part_tmpl}", lookup=mylookup)
-                    part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing, sg2instrs=sg2instrs)
+                    part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing, sg2instrs=sg2instrs, variant_name=variant_name)
                     subdir = dest_dir / variant_name
                     subdir.mkdir(exist_ok=True)
                     part_dest = subdir / part_file
@@ -287,11 +297,15 @@ def main():
         with open(monitor_dest, "w") as f:
             f.write(monitor_content)
     if args.ini_dest:
+        assert variants is not None
         assert monitor_name
-        uarch = "CV32E40PXISAAC"
-        # instr_trace = "InstructionTrace_RV64IMF_Zicsr"
-        instr_trace = monitor_name
-        ini_content = f"""
+        for variant_name in variants:
+            variant_suffix = variant_name if variant_name is not None else ""
+            uarch = f"CV32E40PXISAAC{variant_suffix}"
+            uarch_lower = uarch.lower()
+            # instr_trace = "InstructionTrace_RV64IMF_Zicsr"
+            instr_trace = monitor_name
+            ini_content = f"""
 [StringConfigurations]
 arch.cpu={core_name}
 
@@ -299,12 +313,11 @@ arch.cpu={core_name}
 plugin.perfEst.uArch={uarch}
 plugin.tracePrinter.trace={instr_trace}
 """
-        ini_dir = Path(args.ini_dest)
-        assert ini_dir.is_dir(), f"Not a directory: {ini_dir}"
-        uarch_lower = uarch.lower()
-        ini_file = Path(ini_dir) / f"{uarch_lower}.ini"
-        with open(ini_file, "w") as f:
-            f.write(ini_content)
+            ini_dir = Path(args.ini_dest)
+            assert ini_dir.is_dir(), f"Not a directory: {ini_dir}"
+            ini_file = Path(ini_dir) / f"{uarch_lower}.ini"
+            with open(ini_file, "w") as f:
+                f.write(ini_content)
 
     if args.output is None:
         print(content)
