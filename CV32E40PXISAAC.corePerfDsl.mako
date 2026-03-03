@@ -65,6 +65,11 @@ Microaction {
 
 /************************************ Stages & Pipeline ************************************/
 
+% if new:
+<%include file="${variant_name}/cv32e40p_xisaac_stages.part"/>
+<%include file="${variant_name}/cv32e40p_xisaac_pipelines.part"/>
+% endif
+
 Stage {
   IF_stage (uA_IFetch, uA_PCGen),
   ID_stage (uA_Decode, uA_JumpDecode, uA_JumpDecodeReg, uA_OF_A, uA_OF_B),
