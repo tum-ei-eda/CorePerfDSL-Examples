@@ -126,7 +126,6 @@ def main():
                 variants[variant_name] = variant
             print("variants", variants)
             # input(">>>")
-            sg2instrs = defaultdict(list)
             for variant_name, variant in variants.items():
                 print("variant", variant)
                 selected_solutions = variant
@@ -148,12 +147,19 @@ def main():
                     # print("configs", configs)
                     hls_schedules_df_ = hls_schedules_df[hls_schedules_df["config"].isin(configs)]
                     return hls_schedules_df_
-                hls_schedules_df = apply_selection(hls_schedules_df, selected_solutions)
-                # print("hls_schedules_df_", hls_schedules_df)
+                hls_schedules_df_ = apply_selection(hls_schedules_df, selected_solutions)
+                # print("hls_schedules_df_", hls_schedules_df_)
                 instr_latencies = {}
-                for _, row in hls_schedules_df.iterrows():
+                sg2ii = {}
+                sg2instrs = defaultdict(list)
+                for _, row in hls_schedules_df_.iterrows():
                     lats = row["Instruction latencies"]
+                    ii = row["II"]
+                    print("ii", ii)
+                    # input("!!!")
                     grp = row["SG"]
+                    assert grp not in sg2ii
+                    sg2ii[grp] = ii
                     if lats in ["None", None]:
                         instr_names = ["unknown"]  # TODO
                         assert "Overall latency" in row
@@ -168,6 +174,7 @@ def main():
                     for instr_name, lat in lats.items():
                         sg2instrs[grp].append(instr_name)
                         lat_ = lat
+                        assert instr_name not in instr_latencies
                         instr_latencies[instr_name] = lat_
                 instr_latencies2 = {}
                 print("sg2instrs", sg2instrs)
@@ -192,6 +199,7 @@ def main():
                 input("!")
                 instr_operands_map = {}
                 instrs_timing = {}
+                print("sg2ii", sg2ii)
                 for candidate_data in candidates_data:
                     candidate_properties = candidate_data["properties"]
                     instr_name = candidate_properties["InstrName"]
@@ -215,7 +223,13 @@ def main():
                     print("instr_name", instr_name)
                     print("instr_latencies2", instr_latencies2)
                     instr_cycles = instr_latencies2[instr_name]
-                    instr_timing = (instr_cycles,)
+                    sgs = [sg for sg, instrs in sg2instrs.items() if instr_name in instrs]
+                    print("sgs", sgs)
+                    assert len(sgs) == 1
+                    sg = sgs[0]
+                    print("sg", sg)
+                    ii = sg2ii[sg]
+                    instr_timing = (instr_cycles, ii)
                     instrs_timing[instr_name] = instr_timing
                 instr_names = list(instr_operands_map.keys())
                 # if variant_name is not None:
@@ -228,19 +242,21 @@ def main():
                 lookup_dirs2.append(temp_dir)
                 cores_parts_map = {
                     "cv32e40p": {
-                        "cv32e40p_xisaac_microactions.part": "cv32e40p_xisaac_microactions.mako",
-                        "cv32e40p_xisaac_resources.part": "cv32e40p_xisaac_resources.mako",
-                        "cv32e40p_xisaac_model.part": "cv32e40p_xisaac_model.mako",
+                        "cv32e40p_xisaac_microactions.part": "cv32e40p_xisaac_microactions_new.mako",
+                        "cv32e40p_xisaac_resources.part": "cv32e40p_xisaac_resources_new.mako",
+                        "cv32e40p_xisaac_model.part": "cv32e40p_xisaac_model_new.mako",
+                        "cv32e40p_xisaac_stages.part": "cv32e40p_xisaac_stages.mako",
+                        "cv32e40p_xisaac_pipelines.part": "cv32e40p_xisaac_pipelines.mako",
                     },
                 }
                 cores_parts_map2 = {
                     "cv32e40p": {
-                        "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping.mako",
-                        "cv32e40p_xisaac_ex_stages.part": f"cv32e40p_xisaac_ex_stages.mako",
+                        "cv32e40p_xisaac_microaction_mapping.part": "cv32e40p_xisaac_microaction_mapping_new.mako",
+                        "cv32e40p_xisaac_ex_stages.part": f"cv32e40p_xisaac_ex_stages_new.mako",
                         "cv32e40p_xisaac_instr_groups.part": "cv32e40p_xisaac_instr_groups.mako",
                         "cv32e40p_xisaac_trace_value_mapping.part": "cv32e40p_xisaac_trace_value_mapping.mako",
-                        "cv32e40p_xisaac_virtual_microactions.part": "cv32e40p_xisaac_virtual_microactions.mako",
-                        "cv32e40p_xisaac_virtual_resources.part": "cv32e40p_xisaac_virtual_resources.mako",
+                        "cv32e40p_xisaac_virtual_microactions.part": "cv32e40p_xisaac_virtual_microactions_new.mako",
+                        "cv32e40p_xisaac_virtual_resources.part": "cv32e40p_xisaac_virtual_resources_new.mako",
                     },
                 }
                 core_parts_map = cores_parts_map.get(args.core)
@@ -275,7 +291,7 @@ def main():
                 # mylookup = TemplateLookup(directories=template_dirs + lookup_dirs[variant_name])
                 mylookup = TemplateLookup(directories=template_dirs + lookup_dirs2)
                 mytemplate = Template(filename=args.template, lookup=mylookup)
-                content = mytemplate.render(variants=variants, new=False)
+                content = mytemplate.render(variants=variants, new=True)
                 # if variant_name is not None:
                 #     header = f"// Variant: {variant_name}\n"
                 # else:
