@@ -98,6 +98,7 @@ def main():
                     variants_filter = list(map(int, variants_filter.split(",")))
                 assert isinstance(variants_filter, list)  # TODO: allow sets?
             variants = {}
+            variant_extras = {}
             if hls_schedules_df is not None:
                 hls_schedules_df["SG"] = hls_schedules_df["config"].apply(lambda x: int(x.split("_")[1]))
             hls_selected_schedule_metrics_csv = Path(args.hls_dir) / "hls_selected_schedule_metrics.csv" 
@@ -115,6 +116,10 @@ def main():
                 print("variant_row", variant_row)
                 variant_name = variant_row["Variant name"]
                 print("variant_name", variant_name)
+                variant_details = variant_row["Variant details"]
+                variant_description = variant_row["Variant description"]
+                total_area_estimate = variant_row["total_area_estimate"]
+                variant_extras[variant_name] = (variant_description, variant_details, total_area_estimate)
                 if variant_name is not None:
                     selected_solutions_yaml = Path(args.hls_dir) / "output" / variant_name / "selected_solutions.yaml"
                 else:
@@ -320,9 +325,11 @@ def main():
         uarchs_data = []
         for variant_name in variants:
             variant_suffix = variant_name if variant_name is not None else ""
+            extras = variant_extras[variant_name]
+            variant_description, variant_details, total_area_estimate = extras
             uarch = f"CV32E40PXISAAC{variant_suffix}"
             uarch_lower = uarch.lower()
-            new = {"uarch": uarch, "uarch_lower": uarch_lower, "variant": variant_name}
+            new = {"uarch": uarch, "uarch_lower": uarch_lower, "variant": variant_name, "description": variant_description, "details": variant_details, "total_area_estimate": total_area_estimate}
             uarchs_data.append(new)
 
         uarchs_df = pd.DataFrame(uarchs_data)
