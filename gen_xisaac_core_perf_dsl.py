@@ -118,7 +118,8 @@ def main():
                 print("variant_name", variant_name)
                 variant_details = variant_row["Variant details"]
                 variant_description = variant_row["Variant description"]
-                variant_extras[variant_name] = (variant_description, variant_details)
+                total_area_estimate = variant_row["total_area_estimate"]
+                variant_extras[variant_name] = (variant_description, variant_details, total_area_estimate)
                 if variant_name is not None:
                     selected_solutions_yaml = Path(args.hls_dir) / "output" / variant_name / "selected_solutions.yaml"
                 else:
@@ -309,10 +310,10 @@ def main():
         for variant_name in variants:
             variant_suffix = variant_name if variant_name is not None else ""
             extras = variant_extras[variant_name]
-            variant_description, variant_details = extras
+            variant_description, variant_details, total_area_estimate = extras
             uarch = f"CV32E40PXISAAC{variant_suffix}"
             uarch_lower = uarch.lower()
-            new = {"uarch": uarch, "uarch_lower": uarch_lower, "variant": variant_name, "description": variant_description, "details": variant_details}
+            new = {"uarch": uarch, "uarch_lower": uarch_lower, "variant": variant_name, "description": variant_description, "details": variant_details, "total_area_estimate": total_area_estimate}
             uarchs_data.append(new)
 
         uarchs_df = pd.DataFrame(uarchs_data)
