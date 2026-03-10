@@ -201,7 +201,7 @@ def main():
                     instr_latencies2[instr_name] = lat
                 print("instr_latencies2", instr_latencies2)
 
-                input("!")
+                # input("!")
                 instr_operands_map = {}
                 instrs_timing = {}
                 print("sg2ii", sg2ii)
