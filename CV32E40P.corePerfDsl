@@ -102,6 +102,7 @@ InstrGroup {
   Store (sb, sh, sw),
   Load (lw, lh, lhu, lb, lbu),
   Branch_Ra_Rb (beq, bne, blt, bge, bltu, bgeu),
+  ExCtrl (mret, ecall),
   Default ([?])
 }
 
@@ -119,6 +120,7 @@ MicroactionMapping {
   Store :        {uA_Decode, uA_OF_A, uA_OF_B, uA_LSU, uA_Memory_W},
   Load :         {uA_Decode, uA_OF_A, uA_LSU, uA_Memory_R},
   Branch_Ra_Rb : {uA_Decode, uA_OF_A, uA_OF_B, uA_ALU_Branch},
+  ExCtrl :       {uA_JumpDecode}, // TODO: Investigate how these instructions should be modelled
   jal :          {uA_JumpDecode, uA_ALU_RegUpdate},
   jalr :         {uA_JumpDecodeReg, uA_ALU_RegUpdate}
 }
