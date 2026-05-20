@@ -26,8 +26,12 @@ Resource {IPort_R, DPort_R, DPort_W}
 // = XISAAC Resources =
 <%include file="cv32e40p_xisaac_virtual_resources.part"/>
 % for variant_name in variants:
+% if variant_name is None:
+<%include file="cv32e40p_xisaac_resources.part"/>
+% else:
 // Variant: ${variant_name}
 <%include file="${variant_name}/cv32e40p_xisaac_resources.part"/>
+% endif
 % endfor
 // --------------------
 
@@ -56,9 +60,16 @@ virtual Microaction {
 <%include file="cv32e40p_xisaac_virtual_microactions.part"/>
 }
 % for variant_name in variants:
+% if variant_name is None:
+% else:
 // Variant: ${variant_name}
+% endif
 Microaction {
+% if variant_name is None:
+<%include file="cv32e40p_xisaac_microactions.part"/>
+% else:
 <%include file="${variant_name}/cv32e40p_xisaac_microactions.part"/>
+% endif
 }
 % endfor
 // -----------------------
@@ -66,8 +77,13 @@ Microaction {
 /************************************ Stages & Pipeline ************************************/
 
 % if new:
+% if variant_name is None:
+<%include file="cv32e40p_xisaac_stages.part"/>
+<%include file="cv32e40p_xisaac_pipelines.part"/>
+% else:
 <%include file="${variant_name}/cv32e40p_xisaac_stages.part"/>
 <%include file="${variant_name}/cv32e40p_xisaac_pipelines.part"/>
+% endif
 % endif
 
 Stage {
@@ -241,6 +257,10 @@ TraceValueMapping {
 /**************************************** Variants *****************************************/
 % for variant_name in variants:
 // Variant: ${variant_name}
+% if variant_name is None:
+<%include file="cv32e40p_xisaac_model.part"/>
+% else:
 <%include file="${variant_name}/cv32e40p_xisaac_model.part"/>
+% endif
 % endfor
 // --------------------
