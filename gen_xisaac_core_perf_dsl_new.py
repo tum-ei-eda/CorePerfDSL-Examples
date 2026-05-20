@@ -271,8 +271,17 @@ def main():
                 for part_file, part_tmpl in core_parts_map.items():
                     mylookup = TemplateLookup(directories=template_dirs)
                     part_template = Template(filename=f"templates/{part_tmpl}", lookup=mylookup)
-                    part_content = part_template.render(instr_names=instr_names, instr_operands_map=instr_operands_map, instrs_timing=instrs_timing, sg2instrs=sg2instrs, variant_name=variant_name)
-                    subdir = dest_dir / variant_name
+                    part_content = part_template.render(
+                        instr_names=instr_names,
+                        instr_operands_map=instr_operands_map,
+                        instrs_timing=instrs_timing,
+                        sg2instrs=sg2instrs,
+                        variant_name=variant_name,
+                    )
+                    if variant_name is not None:
+                        subdir = dest_dir / variant_name
+                    else:
+                        subdir = dest_dir
                     subdir.mkdir(exist_ok=True)
                     part_dest = subdir / part_file
                     with open(part_dest, "w") as f:
