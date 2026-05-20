@@ -114,10 +114,10 @@ def main():
             print(hls_variants_df)
             for _, variant_row in hls_variants_df.iterrows():
                 print("variant_row", variant_row)
-                variant_name = variant_row["Variant name"]
+                variant_name = variant_row.get("Variant name")
                 print("variant_name", variant_name)
-                variant_details = variant_row["Variant details"]
-                variant_description = variant_row["Variant description"]
+                variant_details = variant_row.get("Variant details")
+                variant_description = variant_row.get("Variant description")
                 total_area_estimate = variant_row["total_area_estimate"]
                 variant_extras[variant_name] = (variant_description, variant_details, total_area_estimate)
                 if variant_name is not None:
