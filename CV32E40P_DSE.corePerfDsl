@@ -28,7 +28,8 @@ Connector {Xa, Xb, Xd}
 Resource {PCGen, Decoder, JumpDecoder, ALU, LSU, CSR}
 Resource {MUL, MULH(5)}
 Resource {DIV(divider), DIVU(divider_u)}
-Resource {IPort_R(iCache), DPort_R, DPort_W}
+Resource {IPort_R(iCache), DPort_R, DPort_W(dCache)}
+//Resource {IPort_R(iCache), DPort_R, DPort_W}
 
 Microaction {
   uA_IFetch        (Pc -> IPort_R),
@@ -84,7 +85,7 @@ ResourceModel iCache (
 )
 
 ResourceModel dCache (
-  link: "models/cv32e40p_dse/ICacheModel.h"
+  link: "models/cv32e40p_dse/DCacheModel.h"
   trace: addr
 )
 
